@@ -5,7 +5,12 @@ I'm going to add more features in the future if I feel like it. I would like to
 make this editor into something I would actually use day-to-day.
 
 IMPORTANT(gunce): find places in the source to paste all of these in, otherwise you're never going to get to see them again.  
-
+TODO(gunce): make 'kilo' boot up a menu (new file, open file, (settings?)).  
+TODO(gunce): make 'kilo filename' open said file.
+TODO(gunce): make it so it boots without having to put ./ at the start in the terminal.
+TODO(gunce): make it so kilo is recognized by the OS as an actual application that you can launch from the start menu.
+TODO(gunce): line overflow. Resizing the terminal AND line overflow.
+TODO(gunce): highlight C-style comments (more like de-highlight; a gray would work well).
 TODO(gunce): implement "jump to line number" feature.
 TODO(gunce): make the background a pleasing dark color.
 TODO(gunce): highlight TODO (red), NOTE (green), BUG (orange), STUDY (blue), IMPORTANT (yellow).
