@@ -4,6 +4,8 @@ https://viewsourcecode.org/snaptoken/kilo/index.html.
 I'm going to add more features in the future if I feel like it. I would like to
 make this editor into something I would actually use day-to-day.
 
+IMPORTANT(gunce): find places in the source to paste all of these in, otherwise you're never going to get to see them again.  
+
 TODO(gunce): implement "jump to line number" feature.
 TODO(gunce): make the background a pleasing dark color.
 TODO(gunce): highlight TODO (red), NOTE (green), BUG (orange), STUDY (blue), IMPORTANT (yellow).
@@ -31,3 +33,4 @@ TODO(gunce): recently-opened files list (some shortcut, and make it so you can o
 TODO(gunce): close-tab (ask if you want to save before closing).
 TODO(gunce): display file size in bytes and in lines (at the bottom probably).
 TODO(gunce): jump to start of file and to end of file (CTRL-A up-down arrow?).
+TODO(gunce): bookmarked files list (CTRL-something for bookmarking a file and CTRL-SHIFT-something for the list).
