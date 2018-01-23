@@ -39,6 +39,6 @@ typedef struct
 	u32 Height;
 } editor_output_buffer;
 
-// TODO(gunce): services that the platform provides to the application.
+// NOTE(gunce): services that the platform provides to the application.
 internal void PlatformQuit(void);
 #endif

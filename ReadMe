@@ -1,41 +1,39 @@
-Hi ya'll. Making a text-editor whilst following a tutorial on 
+Hi ya'll. Making a text-editor whilst following a tutorial on
 https://viewsourcecode.org/snaptoken/kilo/index.html.
 
 I'm going to add more features in the future if I feel like it. I would like to
 make this editor into something I would actually use day-to-day.
 
-IMPORTANT(gunce): find places in the source to paste all of these in, otherwise you're never going to get to see them again.  
-TODO(gunce): make 'kilo' boot up a menu (new file, open file, (settings?)).  
-TODO(gunce): make 'kilo filename' open said file.
-TODO(gunce): make it so it boots without having to put ./ at the start in the terminal.
-TODO(gunce): make it so kilo is recognized by the OS as an actual application that you can launch from the start menu.
-TODO(gunce): line overflow. Resizing the terminal AND line overflow.
-TODO(gunce): highlight C-style comments (more like de-highlight; a gray would work well).
-TODO(gunce): implement "jump to line number" feature.
-TODO(gunce): make the background a pleasing dark color.
-TODO(gunce): highlight TODO (red), NOTE (green), BUG (orange), STUDY (blue), IMPORTANT (yellow).
-TODO(gunce): highlight C keywords (some non-annoying color).
-TODO(gunce): implement case-insensitive search.
-TODO(gunce): implement "save" and "save as" (guard against overwriting).
-TODO(gunce): add arrow key movement and CTRL+arrow key movement (don't make it go to the first non-empty character, it's annoying).
-TODO(gunce): page up and page down (ctrl-shift-arrow up/down).
-TODO(gunce): implement multiple files opened at once (ctrl-shift-arrow left-right to switch between tabs).
-TODO(gunce): delete line, cut line, paste line.
-TODO(gunce): Ctrl-Z, Ctrl-Y.
-TODO(gunce): auto-save to a seperate copy every minute (file.c -> RECENT_file.c).
-TODO(gunce): display the god damn line numbers please.
-TODO(gunce): support UTF-8 (if I can get Japanese to show up on there, I'll be a happy man).
-TODO(gunce): multiple-line select (shortcut to select mode, then press a certain key to select lines and then copy/cut/delete).
-TODO(gunce): several clipboards and clipboard navigation.
-TODO(gunce): highlight currently opened file name (cyan/magenta?).
-TODO(gunce): highlight line numbers of modified lines (gentle yellow).
-TODO(gunce): select all.
-TODO(gunce): make sure this thing runs on more than my own machine (Linux, MacOS maybe?, Cygwin/Bash for Windows probably).
-TODO(gunce): case-sensitive search-and-replace.
-TODO(gunce): shortcut list (CTRL-?).
-BUG(gunce): make it so you can't scroll whilst the program is running.
-TODO(gunce): recently-opened files list (some shortcut, and make it so you can open them in a new tab).
-TODO(gunce): close-tab (ask if you want to save before closing).
-TODO(gunce): display file size in bytes and in lines (at the bottom probably).
-TODO(gunce): jump to start of file and to end of file (CTRL-A up-down arrow?).
-TODO(gunce): bookmarked files list (CTRL-something for bookmarking a file and CTRL-SHIFT-something for the list).
+// TODO(gunce): make 'kilo' boot up a menu (new file, open file, (settings?)).
+// TODO(gunce): make 'kilo filename' open said file.
+// TODO(gunce): make it so it boots without having to put ./ at the start in the terminal.
+// TODO(gunce): make it so kilo is recognized by the OS as an actual application that you can launch from the start menu.
+// TODO(gunce): line overflow. Resizing the terminal AND line overflow.
+// TODO(gunce): highlight C-style comments (more like de-highlight; a gray would work well).
+// TODO(gunce): implement "jump to line number" feature.
+// TODO(gunce): make the background a pleasing dark color.
+// TODO(gunce): highlight TODO (red), NOTE (green), BUG (orange), STUDY (blue), IMPORTANT (yellow).
+// TODO(gunce): highlight C keywords (some non-annoying color).
+// TODO(gunce): implement case-insensitive search.
+// TODO(gunce): implement "save" and "save as" (guard against overwriting).
+// TODO(gunce): add arrow key movement and CTRL+arrow key movement (don't make it go to the first non-empty character, it's annoying).
+// TODO(gunce): page up and page down (ctrl-shift-arrow up/down).
+// TODO(gunce): implement multiple files opened at once (ctrl-shift-arrow left-right to switch between tabs).
+// TODO(gunce): delete line, cut line, paste line.
+// TODO(gunce): Ctrl-Z, Ctrl-Y.
+// TODO(gunce): auto-save to a seperate copy every minute (file.c -> RECENT_file.c).
+// TODO(gunce): display the god damn line numbers please.
+// TODO(gunce): support UTF-8 (if I can get Japanese to show up on there, I'll be a happy man).
+// TODO(gunce): multiple-line select (shortcut to select mode, then press a certain key to select lines and then copy/cut/delete).
+// TODO(gunce): several clipboards and clipboard navigation.
+// TODO(gunce): highlight currently opened file name (cyan/magenta?).
+// TODO(gunce): highlight line numbers of modified lines (gentle yellow).
+// TODO(gunce): select all.
+// TODO(gunce): make sure this thing runs on more than my own machine (Linux, MacOS maybe?, Cygwin/Bash for Windows probably).
+// TODO(gunce): case-sensitive search-and-replace.
+// TODO(gunce): shortcut list (CTRL-?).
+// TODO(gunce): recently-opened files list (some shortcut, and make it so you can open them in a new tab).
+// TODO(gunce): close-tab (ask if you want to save before closing).
+// TODO(gunce): display file size in bytes and in lines (at the bottom probably).
+// TODO(gunce): jump to start of file and to end of file (CTRL-A up-down arrow?).
+// TODO(gunce): bookmarked files list (CTRL-something for bookmarking a file and CTRL-SHIFT-something for the list).

@@ -16,13 +16,13 @@ global_variable struct termios OriginalTerminal;
 
 internal void
 TerminalWriteBytes(const char *Bytes, int ByteCount)
-{	 
+{
 	write(STDOUT_FILENO, Bytes, ByteCount);
 }
 
 internal void
 TerminalRefreshScreen(void)
-{ 
+{
 	TerminalWriteBytes(SEQUENCE_CLEARSCREEN);
 	TerminalWriteBytes(SEQUENCE_RESETCURSOR);
 }
@@ -43,7 +43,7 @@ TerminalReadKey(void)
 
 internal void
 TerminalProcessKeypress(editor_input *Input)
-{ 
+{
 	u8 c = TerminalReadKey();
 	switch(c)
 	{
@@ -63,6 +63,7 @@ TerminalDisableRawMode(void)
 internal void
 TerminalEnableRawMode(void)
 {
+	// BUG(gunce): make it so you can't scroll whilst the program is running.
 	ASSERT(tcgetattr(STDIN_FILENO, &OriginalTerminal) != -1);
 	atexit(TerminalDisableRawMode);
 	struct termios RawTerminal = OriginalTerminal;
@@ -96,9 +97,12 @@ TerminalUpdateScreen(editor_output_buffer *Buffer)
 			TerminalWriteBytes(Pixel->Bytes, Pixel->ByteCount);
 			++Pixel;
 		}
-		TerminalWriteBytes("\r\n", 2);
+		if(RowIndex != (Buffer->Height-1))
+		{
+			TerminalWriteBytes("\r\n", 2);
+		}
 	}
-	TerminalWriteBytes(SEQUENCE_RESETCURSOR);	
+	TerminalWriteBytes(SEQUENCE_RESETCURSOR);
 }
 
 internal void
@@ -116,7 +120,7 @@ TerminalZeroBuffer(editor_output_buffer *Buffer)
 			Pixel->ByteCount = 0;
 			++Pixel;
 		}
-	}	
+	}
 }
 
 internal void
@@ -125,7 +129,7 @@ TerminalGetDimensions(u32 *Width, u32 *Height)
 #ifdef TIOCGSIZE
 	struct ttysize TerminalSize;
 	ioctl(STDIN_FILENO, TIOCGSIZE, &TerminalSize);
-	*Width = TerminalSize.ts_cols; 
+	*Width = TerminalSize.ts_cols;
 	*Height = TerminalSize.ts_lines;
 #elif defined(TIOCGWINSZ)
 	struct winsize TerminalSize;
@@ -140,7 +144,7 @@ TerminalGetDimensions(u32 *Width, u32 *Height)
 // NOTE(gunce): platform-dependent definitions below.
 internal void
 PlatformQuit(void)
-{	
+{
 	TerminalRefreshScreen();
 	exit(0);
 }
@@ -156,8 +160,9 @@ int main(void)
 	editor_output_buffer Buffer = {0};
 	TerminalGetDimensions(&Buffer.Width, &Buffer.Height);
 	ASSERT(Buffer.Width && Buffer.Height);
-	Buffer.Memory = malloc(Buffer.Width * Buffer.Height * 
-			       sizeof(pixel_t));	
+	Buffer.Memory = malloc(Buffer.Width * Buffer.Height *
+			       sizeof(pixel_t));
+	printf("%d", Buffer.Height);
 	TerminalZeroBuffer(&Buffer);
 
 	TerminalEnableRawMode();
