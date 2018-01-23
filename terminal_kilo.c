@@ -117,7 +117,8 @@ TerminalZeroBuffer(editor_output_buffer *Buffer)
 		    ColumnIndex < Buffer->Width;
 		    ++ColumnIndex)
 		{
-			Pixel->ByteCount = 0;
+			Pixel->ByteCount = 1;
+			Pixel->Bytes[0] = ' ';
 			++Pixel;
 		}
 	}
@@ -157,19 +158,19 @@ int main(void)
 	editor_input Input = {0};
 
 	// TODO(gunce): implement terminal window resizing.
-	editor_output_buffer Buffer = {0};
-	TerminalGetDimensions(&Buffer.Width, &Buffer.Height);
-	ASSERT(Buffer.Width && Buffer.Height);
-	Buffer.Memory = malloc(Buffer.Width * Buffer.Height *
+	editor_output_buffer MenuBuffer = {0};
+	TerminalGetDimensions(&MenuBuffer.Width, &MenuBuffer.Height);
+	ASSERT(MenuBuffer.Width && MenuBuffer.Height);
+	MenuBuffer.Memory = malloc(MenuBuffer.Width * MenuBuffer.Height *
 			       sizeof(pixel_t));
-	printf("%d", Buffer.Height);
-	TerminalZeroBuffer(&Buffer);
+	TerminalZeroBuffer(&MenuBuffer);
 
+	EditorInitMenuBuffer(&MenuBuffer);
 	TerminalEnableRawMode();
 	while(1)
 	{
-		EditorUpdateBuffer(&Buffer, &Input);
-		TerminalUpdateScreen(&Buffer);
+		EditorUpdateBuffer(&MenuBuffer, &Input);
+		TerminalUpdateScreen(&MenuBuffer);
 		TerminalProcessKeypress(&Input);
 	}
 	return(0);
