@@ -1,33 +1,69 @@
 #include "kilo.h"
 
+global_variable b32 GlobalNeedToReverseBytes = 0;
+
+internal void
+EditorInitializeGlobals(void)
+{
+	GlobalNeedToReverseBytes = BitManipIsLittleEndian();
+}
+
+internal void
+EditorCopyChar(u32 Source, u32 *Destination)
+{
+	if(GlobalNeedToReverseBytes)
+	{
+		Source = BitManipReverseBytes(Source);
+	}
+	*Destination = Source;
+}
+
+internal void
+EditorFillWholeBuffer(editor_output_buffer *Buffer, u32 Brush)
+{
+	u32 *CharPointer = (u32 *)Buffer->Memory;
+	for(u32 RowIndex = 0;
+	    RowIndex < Buffer->Height;
+	    ++RowIndex)
+	{
+		for(u32 ColumnIndex = 0;
+		    ColumnIndex < Buffer->Width;
+		    ++ColumnIndex)
+		{
+			EditorCopyChar(Brush, CharPointer);
+			++CharPointer;
+		}
+	}
+}
+
 internal void
 EditorFillRow(editor_output_buffer *Buffer, u32 Row,
-							char_t Brush)
+							u32 Brush)
 {
 	ASSERT(Row < Buffer->Height);
-	char_t *CharPointer = (char_t *)Buffer->Memory;
+	u32 *CharPointer = (u32 *)Buffer->Memory;
 	CharPointer += (Row * Buffer->Width);
 	for(u32 ColumnIndex = 0;
 	    ColumnIndex < Buffer->Width;
 	    ++ColumnIndex)
 	{
-		CharCopy(Brush, CharPointer);
+		EditorCopyChar(Brush, CharPointer);
 		++CharPointer;
 	}
 }
 
 internal void
 EditorFillColumn(editor_output_buffer *Buffer, u32 Column,
-								 char_t Brush)
+								 u32 Brush)
 {
 	ASSERT(Column < Buffer->Width);
-	char_t *CharPointer = (char_t *)Buffer->Memory;
+	u32 *CharPointer = (u32 *)Buffer->Memory;
 	CharPointer += Column;
 	for(u32 RowIndex = 0;
 	    RowIndex < Buffer->Height;
 	    ++RowIndex)
 	{
-		CharCopy(Brush, CharPointer);
+		EditorCopyChar(Brush, CharPointer);
 		CharPointer += Buffer->Width;
 	}
 }
@@ -35,25 +71,20 @@ EditorFillColumn(editor_output_buffer *Buffer, u32 Column,
 internal void
 EditorInitMenuBuffer(editor_output_buffer *Menu)
 {
-	EditorFillRow(Menu, 0,
-								GlobalCharacterTable.ZWithStroke);
-	EditorFillRow(Menu, Menu->Height-1,
-								GlobalCharacterTable.ZWithStroke);
-	EditorFillColumn(Menu, 0,	GlobalCharacterTable.VerticalBar);
-	EditorFillColumn(Menu, 1, GlobalCharacterTable.Equals);
-	EditorFillColumn(Menu, 2, GlobalCharacterTable.VerticalBar);
-	EditorFillColumn(Menu, Menu->Width-3,
-									 GlobalCharacterTable.VerticalBar);
-	EditorFillColumn(Menu, Menu->Width-2,
-									 GlobalCharacterTable.Equals);
-	EditorFillColumn(Menu, Menu->Width-1,
-									 GlobalCharacterTable.VerticalBar);
+	EditorFillColumn(Menu, 0, '+');
+	EditorFillColumn(Menu, 1, '=');
+	EditorFillColumn(Menu, 2, '|');
+	EditorFillColumn(Menu, Menu->Width-3, '|');
+	EditorFillColumn(Menu, Menu->Width-2, '=');
+	EditorFillColumn(Menu, Menu->Width-1, '+');
+	EditorFillRow(Menu, 0, 'Ƶ');
+	EditorFillRow(Menu, Menu->Height-1, 'Ƶ');
 }
 
 internal void
-EditorUpdateBuffer(editor_output_buffer *Menu, editor_input *Input)
+EditorUpdateBuffer(editor_output_buffer *Menu, b32 Input)
 {
-	if(!Input->Quit)
+	if(!(Input & EDITOR_QUIT))
 	{
 
 	}else

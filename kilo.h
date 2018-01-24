@@ -19,11 +19,11 @@ typedef uint8_t u8;
 typedef int32_t i32;
 typedef uint32_t u32;
 
-typedef struct
-{
-	b32 Quit;
-	// TODO(gunce): add more fields
-} editor_input;
+#define EDITOR_QUIT 1
+#define EDITOR_UP 2
+#define EDITOR_DOWN 4
+#define EDITOR_LEFT 8
+#define EDITOR_RIGHT 16
 
 typedef struct
 {

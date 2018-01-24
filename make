@@ -1,8 +1,8 @@
 #!/bin/bash
 #This executable builds the text editor application KILO.
 
-cflags="-Wall -Wextra -pedantic -std=c99"
-def_internal=""
+cflags="-Wall -Wextra -pedantic -Wno-multichar -std=c99"
+dbg=""
 platform_file=""
 
 if [ "$1" == "terminal" ]; then
@@ -10,16 +10,16 @@ if [ "$1" == "terminal" ]; then
 #elif <...>
 fi
 
-if [ "$2" == "internal" ]; then
-	def_internal="-DINTERNAL=1"
+if [ "$2" == "debug" ]; then
+	dbg="-DINTERNAL=1 -g"
 fi
 
 if [ ! -d "build" ]; then
 	mkdir build
 else
 	if [ -f "kilo" ]; then
-		echo "removed kilo"	
+		echo "removed kilo"
 		rm "kilo"
 	fi
-	gcc $def_internal $platform_file -o build/kilo $cflags
+	gcc $dbg $platform_file -o build/kilo $cflags
 fi
