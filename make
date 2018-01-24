@@ -5,8 +5,8 @@ cflags="-Wall -Wextra -pedantic -Wno-multichar -std=c99"
 dbg=""
 platform_file=""
 
-if [ "$1" == "terminal" ]; then
-	platform_file="terminal_kilo.c"
+if [ "$1" == "linux" ]; then
+	platform_file="X_kilo.c"
 #elif <...>
 fi
 

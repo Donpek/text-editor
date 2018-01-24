@@ -1,27 +1,21 @@
 #include "kilo.h"
 
-global_variable b32 GlobalNeedToReverseBytes = 0;
-
 internal void
-EditorInitializeGlobals(void)
-{
-	GlobalNeedToReverseBytes = BitManipIsLittleEndian();
-}
-
-internal void
-EditorCopyChar(u32 Source, u32 *Destination)
+EditorWritePixel(editor_pixel *Destination, u32 Character, u32 BitInfo)
 {
 	if(GlobalNeedToReverseBytes)
 	{
-		Source = BitManipReverseBytes(Source);
+		Character = BitManipReverseBytes(Character);
 	}
-	*Destination = Source;
+	Destination->Character = Character;
+	Destination->BitInfo = BitInfo;
 }
 
 internal void
-EditorFillWholeBuffer(editor_output_buffer *Buffer, u32 Brush)
+EditorFillWholeScreen(editor_screen_buffer *Buffer, u32 Character,
+											u32 BitInfo)
 {
-	u32 *CharPointer = (u32 *)Buffer->Memory;
+	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	for(u32 RowIndex = 0;
 	    RowIndex < Buffer->Height;
 	    ++RowIndex)
@@ -30,59 +24,60 @@ EditorFillWholeBuffer(editor_output_buffer *Buffer, u32 Brush)
 		    ColumnIndex < Buffer->Width;
 		    ++ColumnIndex)
 		{
-			EditorCopyChar(Brush, CharPointer);
-			++CharPointer;
+			EditorWritePixel(PixelPointer, Character, BitInfo);
+			++PixelPointer;
 		}
 	}
 }
 
 internal void
-EditorFillRow(editor_output_buffer *Buffer, u32 Row,
-							u32 Brush)
+EditorFillRow(editor_screen_buffer *Buffer, u32 Row,
+							u32 Character, u32 BitInfo)
 {
 	ASSERT(Row < Buffer->Height);
-	u32 *CharPointer = (u32 *)Buffer->Memory;
-	CharPointer += (Row * Buffer->Width);
+	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
+	PixelPointer += (Row * Buffer->Width);
 	for(u32 ColumnIndex = 0;
 	    ColumnIndex < Buffer->Width;
 	    ++ColumnIndex)
 	{
-		EditorCopyChar(Brush, CharPointer);
-		++CharPointer;
+		EditorWritePixel(PixelPointer, Character, BitInfo);
+		++PixelPointer;
 	}
 }
 
 internal void
-EditorFillColumn(editor_output_buffer *Buffer, u32 Column,
-								 u32 Brush)
+EditorFillColumn(editor_screen_buffer *Buffer, u32 Column,
+								 u32 Character, u32 BitInfo)
 {
 	ASSERT(Column < Buffer->Width);
-	u32 *CharPointer = (u32 *)Buffer->Memory;
-	CharPointer += Column;
+	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
+	PixelPointer += Column;
 	for(u32 RowIndex = 0;
 	    RowIndex < Buffer->Height;
 	    ++RowIndex)
 	{
-		EditorCopyChar(Brush, CharPointer);
-		CharPointer += Buffer->Width;
+		EditorWritePixel(PixelPointer, Character, BitInfo);
+		PixelPointer += Buffer->Width;
 	}
 }
 
 internal void
-EditorInitMenuBuffer(editor_output_buffer *Menu)
+EditorSetToMenu(editor_screen_buffer *Video)
 {
-	EditorFillColumn(Menu, 0, '+');
-	EditorFillColumn(Menu, 1, '=');
-	EditorFillColumn(Menu, 2, '|');
-	EditorFillColumn(Menu, Menu->Width-3, '|');
-	EditorFillColumn(Menu, Menu->Width-2, '=');
-	EditorFillColumn(Menu, Menu->Width-1, '+');
-	EditorFillRow(Menu, 0, 'Ƶ');
-	EditorFillRow(Menu, Menu->Height-1, 'Ƶ');
+	EditorFillWholeScreen(Video, ' ', 0);
+	EditorFillColumn(Video, 0, '+', 0);
+	EditorFillColumn(Video, 1, '=', 0);
+	EditorFillColumn(Video, 2, '|', 0);
+	EditorFillColumn(Video, Video->Width-3, '|', 0);
+	EditorFillColumn(Video, Video->Width-2, '=', 0);
+	EditorFillColumn(Video, Video->Width-1, '+', 0);
+	EditorFillRow(Video, 0, 'Ƶ', 0);
+	EditorFillRow(Video, Video->Height-1, 'Ƶ', 0);
 }
 
 internal void
-EditorUpdateBuffer(editor_output_buffer *Menu, b32 Input)
+EditorUpdateScreen(editor_screen_buffer *Video, b32 Input)
 {
 	if(!(Input & EDITOR_QUIT))
 	{
