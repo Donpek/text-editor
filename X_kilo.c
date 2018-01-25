@@ -15,6 +15,17 @@
 #define SEQUENCE_NEWLINE "\r\n", 2
 #define SEQUENCE_CLEARSCREEN "\x1b[2J", 4
 #define SEQUENCE_RESETCURSOR "\x1b[H", 3
+#define SEQUENCE_RED_FG "\x1b[31m", 5
+#define SEQUENCE_GREEN_FG "\x1b[32m", 5
+#define SEQUENCE_BLUE_FG "\x1b[34m", 5
+#define SEQUENCE_BLACK_FG "\x1b[30m", 5
+#define SEQUENCE_YELLOW_FG "\x1b[33m", 5
+#define SEQUENCE_RED_BG "\x1b[41m", 5
+#define SEQUENCE_GREEN_BG "\x1b[42m", 5
+#define SEQUENCE_BLUE_BG "\x1b[44m", 5
+#define SEQUENCE_BLACK_BG "\x1b[40m", 5
+#define SEQUENCE_YELLOW_BG "\x1b[43m", 5
+#define SEQUENCE_RESET_ATTRIBUTES "\x1b[0m", 4
 
 typedef struct
 {
@@ -102,10 +113,63 @@ XEnableRawMode(void)
 }
 
 internal void
+XSetColor(u32 BitInfo)
+{
+	u32 Foreground = BitInfo & (EDITOR_RED_FG | EDITOR_GREEN_FG | EDITOR_BLUE_FG);
+	u32 Background = BitInfo & (EDITOR_RED_BG | EDITOR_GREEN_BG | EDITOR_BLUE_BG);
+	switch(Foreground)
+	{
+		case 0:
+		{
+			XWriteBytes(SEQUENCE_BLACK_FG);
+		}break;
+		case EDITOR_RED_FG:
+		{
+			XWriteBytes(SEQUENCE_RED_FG);
+		}break;
+		case EDITOR_GREEN_FG:
+		{
+			XWriteBytes(SEQUENCE_GREEN_FG);
+		}break;
+		case EDITOR_BLUE_FG:
+		{
+			XWriteBytes(SEQUENCE_BLUE_FG);
+		}break;
+		case EDITOR_RED_FG | EDITOR_GREEN_FG:
+		{
+			XWriteBytes(SEQUENCE_YELLOW_FG);
+		}break;
+		default: ASSERT(!"XSetColor: no such color.");
+	}
+	switch(Background)
+	{
+		case 0:
+		{
+			XWriteBytes(SEQUENCE_BLACK_BG);
+		}break;
+		case EDITOR_RED_BG:
+		{
+			XWriteBytes(SEQUENCE_RED_BG);
+		}break;
+		case EDITOR_GREEN_BG:
+		{
+			XWriteBytes(SEQUENCE_GREEN_BG);
+		}break;
+		case EDITOR_BLUE_BG:
+		{
+			XWriteBytes(SEQUENCE_BLUE_BG);
+		}break;
+		case EDITOR_RED_BG | EDITOR_GREEN_BG:
+		{
+			XWriteBytes(SEQUENCE_YELLOW_BG);
+		}break;
+		default: ASSERT(!"XSetColor: no such color.");
+	}
+}
+
+internal void
 XUpdateScreen(X_screen_buffer Buffer)
 {
-	// TODO(gunce): turn this function into one large write,
-	// instead of many small ones.
 	X_pixel *PixelPointer = (X_pixel *)Buffer.Memory;
 	for(u32 RowIndex = 0;
 	    RowIndex < Buffer.Height;
@@ -115,7 +179,12 @@ XUpdateScreen(X_screen_buffer Buffer)
 		    ColumnIndex < Buffer.Width;
 		    ++ColumnIndex)
 		{
-			XWriteBytes(PixelPointer, sizeof(PixelPointer->Character));
+			if(PixelPointer->BitInfo & EDITOR_NEED_TO_DRAW)
+			{
+				XSetColor(PixelPointer->BitInfo);
+				XWriteBytes(&PixelPointer->Character, sizeof(PixelPointer->Character));
+				PixelPointer->BitInfo ^= EDITOR_NEED_TO_DRAW;
+			}
 			++PixelPointer;
 		}
 		if(RowIndex != (Buffer.Height-1))
@@ -148,6 +217,7 @@ XGetDimensions(u32 *Width, u32 *Height)
 internal void
 PlatformQuit(void)
 {
+	XWriteBytes(SEQUENCE_RESET_ATTRIBUTES);
 	XRefreshScreen();
 	exit(0);
 }

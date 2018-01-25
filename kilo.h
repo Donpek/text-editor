@@ -27,10 +27,13 @@ typedef uint32_t u32;
 #define EDITOR_RIGHT 16
 
 // NOTE(gunce): pixel info bits.
-#define EDITOR_NEED_TO_REDRAW 1
-#define EDITOR_RED 2
-#define EDITOR_GREEN 4
-#define EDITOR_BLUE 8
+#define EDITOR_NEED_TO_DRAW 1
+#define EDITOR_RED_FG 2
+#define EDITOR_GREEN_FG 4
+#define EDITOR_BLUE_FG 8
+#define EDITOR_RED_BG 16
+#define EDITOR_GREEN_BG 32
+#define EDITOR_BLUE_BG 64
 
 typedef struct
 {

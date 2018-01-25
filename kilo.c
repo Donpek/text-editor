@@ -8,7 +8,7 @@ EditorWritePixel(editor_pixel *Destination, u32 Character, u32 BitInfo)
 		Character = BitManipReverseBytes(Character);
 	}
 	Destination->Character = Character;
-	Destination->BitInfo = BitInfo;
+	Destination->BitInfo = BitInfo | EDITOR_NEED_TO_DRAW;
 }
 
 internal void
@@ -65,15 +65,17 @@ EditorFillColumn(editor_screen_buffer *Buffer, u32 Column,
 internal void
 EditorSetToMenu(editor_screen_buffer *Video)
 {
+	u32 Red = EDITOR_RED_FG;
+	u32 Yellow = EDITOR_RED_FG | EDITOR_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
-	EditorFillColumn(Video, 0, '+', 0);
-	EditorFillColumn(Video, 1, '=', 0);
-	EditorFillColumn(Video, 2, '|', 0);
-	EditorFillColumn(Video, Video->Width-3, '|', 0);
-	EditorFillColumn(Video, Video->Width-2, '=', 0);
-	EditorFillColumn(Video, Video->Width-1, '+', 0);
-	EditorFillRow(Video, 0, 'Ƶ', 0);
-	EditorFillRow(Video, Video->Height-1, 'Ƶ', 0);
+	EditorFillColumn(Video, 0, '+', Yellow);
+	EditorFillColumn(Video, 1, '=', Yellow);
+	EditorFillColumn(Video, 2, '|', Yellow);
+	EditorFillColumn(Video, Video->Width-3, '|', Yellow);
+	EditorFillColumn(Video, Video->Width-2, '=', Yellow);
+	EditorFillColumn(Video, Video->Width-1, '+', Yellow);
+	EditorFillRow(Video, 0, 'Ƶ', Red);
+	EditorFillRow(Video, Video->Height-1, 'Ƶ', Red);
 }
 
 internal void
