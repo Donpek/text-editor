@@ -1,4 +1,11 @@
 // NOTE(gunce): external libraries.
+/* STUDY(gunce): once you finish this project, find about
+| whether it's plausible to get rid of all of these
+| includes. If it is, then be good and implement all of
+| the externs you're using yourself. This will probably
+| make this file more platform-specific, which is
+| good in the way that I'll get to port this editor
+| over to other platforms (OSes and/or terminals). */
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -7,6 +14,24 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <locale.h>
+
+#define CTRL_PLUS(key) ((key) & 0x1f)
+#define ASSERT(expression)\
+if(!(expression))\
+{\
+	printf("EXPRESSION:" #expression "| FILE:%s | LINE:%d\r\n",\
+	 			 __FILE__, __LINE__); exit(1);\
+}
+
+#define internal static
+#define global_variable static
+
+#include <stdint.h>
+typedef int32_t b32;
+typedef int8_t i8;
+typedef uint8_t u8;
+typedef int32_t i32;
+typedef uint32_t u32;
 
 // NOTE(gunce): internal stuff.
 #include "kilo.h"
@@ -80,9 +105,10 @@ XProcessKeypress(b32 *Input)
 	u32 Character = XReadKey();
 	switch(Character)
 	{
-	case CTRL_PLUS('q'):{
-		*Input |= EDITOR_QUIT;
-	}break;
+		case CTRL_PLUS('q'):
+		{
+			*Input |= EDITOR_QUIT;
+		}break;
 	}
 }
 
@@ -245,7 +271,10 @@ int main(void)
 	Video.Memory = XVideo.Memory;
 	Video.Width = XVideo.Width;
 	Video.Height = XVideo.Height;
-	EditorSetToMenu(&Video);
+
+	editor_line Choices[EDITOR_MAX_CHOICES] = {0};
+	editor_line *CurrentChoice = Choices;
+	EditorSetToMenu(&Video, Choices);
 
 	XEnableRawMode();
 	b32 Input = 0;

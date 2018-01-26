@@ -14,6 +14,7 @@ Platform-level TODOs:
 - auto-save to a seperate copy every minute (file.c -> RECENT_file.c).
 
 Editor-level TODOs:
+- treat tabs as spaces.
 - settings left/right select.
 - incremental cursor position.
 - line overflow.
