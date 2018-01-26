@@ -1,4 +1,7 @@
 #define BYTES(amount) (8 * (amount))
+#define KILOBYTES(amount) (1024 * BYTES(amount))
+#define MEGABYTES(amount) (1024 * KILOBYTES(amount))
+#define GIGABYTES(amount) (1024 * MEGABYTES(amount))
 
 internal b32
 BitManipIsLittleEndian(void)

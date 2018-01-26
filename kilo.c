@@ -180,7 +180,7 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 	ASSERT(X < Buffer->Width && Y < Buffer->Height);
 	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	PixelPointer += X + (Y * Buffer->Width);
-	Result.Text = PixelPointer;
+	Result.Start = PixelPointer;
 	u8 *WritePointer = (u8 *)Text;
 	for(u32 CharacterIndex = 0;
 			CharacterIndex < TextLength;
@@ -225,9 +225,30 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 	return(Result);
 }
 
+internal u32
+EditorInvertPixelColors(u32 BitInfo)
+{
+	u32 Result = EDITOR_COLOR_MASK & (~BitInfo);
+	return(Result);
+}
+
 internal void
-EditorSetToMenu(editor_screen_buffer *Video,
-								editor_line Choices[EDITOR_MAX_CHOICES])
+EditorInvertLineColors(editor_line Line)
+{
+	editor_pixel *PixelPointer = Line.Start;
+	for(u32 PixelIndex = 0;
+			PixelIndex < Line.Length;
+			++PixelIndex)
+	{
+		u32 InvertedColor = EditorInvertPixelColors(PixelPointer->BitInfo);
+		EditorWritePixel(PixelPointer, PixelPointer->Character,
+										 InvertedColor, 0);
+		++PixelPointer;
+	}
+}
+
+internal void
+EditorSetToMenu(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	u32 Red = EDITOR_RED_FG;
 	u32 Yellow = EDITOR_RED_FG | EDITOR_GREEN_FG;
@@ -241,28 +262,76 @@ EditorSetToMenu(editor_screen_buffer *Video,
 	EditorFillColumn(Video, Video->Width-1, '+', Yellow);
 	EditorFillRow(Video, 0, 'Ƶ', Red);
 	EditorFillRow(Video, Video->Height-1, 'Ƶ', Red);
-	Choices[0] = EditorWriteLine(
+	Memory->Choices[0] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2 - 2,
-		(u32 *)"Open an eƵisting file.", Green, EDITOR_ALIGN_CENTER
+		(u32 *)"Open an exƵisting file.", EditorInvertPixelColors(Green),
+		EDITOR_ALIGN_CENTER
 	);
-  Choices[1] = EditorWriteLine(
+  Memory->Choices[1] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2,
 		(u32 *)"Create a new file.", Green, EDITOR_ALIGN_CENTER
 	);
-	Choices[2] = EditorWriteLine(
+	Memory->Choices[2] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2 + 2,
 		(u32 *)"Show the Ƶettings.", Green, EDITOR_ALIGN_CENTER
 	);
+	Memory->ChoiceIndex = 0;
+	Memory->ChoiceCount = 3;
+	Memory->CurrentMode = EDITOR_CHOOSING;
 }
 
 internal void
-EditorUpdateScreen(editor_screen_buffer *Video, b32 Input)
+EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
+									 editor_memory *Memory)
 {
-	if(!(Input & EDITOR_QUIT))
-	{
-
-	}else
+	if(*Input.Quit)
 	{
 		PlatformQuit();
+	}else
+	{
+		switch(Memory->CurrentMode)
+		{
+			case EDITOR_CHOOSING:
+			{
+				if(*Input.Down)
+				{
+					EditorInvertLineColors(
+						Memory->Choices[Memory->ChoiceIndex]
+					);
+					if(Memory->ChoiceIndex < Memory->ChoiceCount - 1)
+					{
+						++Memory->ChoiceIndex;
+					}else
+					{
+						Memory->ChoiceIndex = 0;
+					}
+					EditorInvertLineColors(
+						Memory->Choices[Memory->ChoiceIndex]
+					);
+					*Input.Down = 0;
+				}else if(*Input.Up)
+				{
+					EditorInvertLineColors(
+						Memory->Choices[Memory->ChoiceIndex]
+					);
+					if(Memory->ChoiceIndex > 0)
+					{
+						--Memory->ChoiceIndex;
+					}else
+					{
+						Memory->ChoiceIndex = Memory->ChoiceCount - 1;
+					}
+					EditorInvertLineColors(
+						Memory->Choices[Memory->ChoiceIndex]
+					);
+					*Input.Up = 0;
+				}
+			} break;
+			case EDITOR_EDITING:
+			{
+
+			} break;
+			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
+		}
 	}
 }

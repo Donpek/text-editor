@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <locale.h>
 
-#define CTRL_PLUS(key) ((key) & 0x1f)
 #define ASSERT(expression)\
 if(!(expression))\
 {\
@@ -28,6 +27,7 @@ if(!(expression))\
 
 #include <stdint.h>
 typedef int32_t b32;
+typedef int8_t b8;
 typedef int8_t i8;
 typedef uint8_t u8;
 typedef int32_t i32;
@@ -37,26 +37,49 @@ typedef uint32_t u32;
 #include "kilo.h"
 #include "bitmanip.c"
 
+#define CTRL_PLUS(key) ((key) & 0x1f)
+#define X_DOWN_ARROW 0x32
+#define X_UP_ARROW 0x38
+#define X_LEFT_ARROW 0x34
+#define X_RIGHT_ARROW 0x36
+
 #define SEQUENCE_NEWLINE "\r\n", 2
 #define SEQUENCE_CLEARSCREEN "\x1b[2J", 4
 #define SEQUENCE_RESETCURSOR "\x1b[H", 3
+#define SEQUENCE_NUDGE_CURSOR_RIGHT "\x1b[C", 3
+
 #define SEQUENCE_RED_FG "\x1b[31m", 5
 #define SEQUENCE_GREEN_FG "\x1b[32m", 5
 #define SEQUENCE_BLUE_FG "\x1b[34m", 5
 #define SEQUENCE_BLACK_FG "\x1b[30m", 5
+#define SEQUENCE_WHITE_FG "\x1b[37m", 5
+#define SEQUENCE_CYAN_FG "\x1b[36m", 5
+#define SEQUENCE_MAGENTA_FG "\x1b[35m", 5
 #define SEQUENCE_YELLOW_FG "\x1b[33m", 5
 #define SEQUENCE_RED_BG "\x1b[41m", 5
 #define SEQUENCE_GREEN_BG "\x1b[42m", 5
 #define SEQUENCE_BLUE_BG "\x1b[44m", 5
 #define SEQUENCE_BLACK_BG "\x1b[40m", 5
+#define SEQUENCE_WHITE_BG "\x1b[47m", 5
+#define SEQUENCE_CYAN_BG "\x1b[46m", 5
+#define SEQUENCE_MAGENTA_BG "\x1b[45m", 5
 #define SEQUENCE_YELLOW_BG "\x1b[43m", 5
 #define SEQUENCE_RESET_ATTRIBUTES "\x1b[0m", 4
 
 typedef struct
 {
+	b8 CtrlQ;
+	b8 LeftArrow;
+	b8 RightArrow;
+	b8 UpArrow;
+	b8 DownArrow;
+} x_keyboard;
+
+typedef struct
+{
 	u32 Character;
 	u32 BitInfo;
-} X_pixel;
+} x_pixel;
 
 typedef struct
 {
@@ -64,7 +87,7 @@ typedef struct
 	void *Memory;
 	u32 Width;
 	u32 Height;
-} X_screen_buffer;
+} x_screen_buffer;
 
 global_variable struct termios GlobalOriginalTerminal;
 global_variable b32 GlobalNeedToReverseBytes;
@@ -99,16 +122,23 @@ XReadKey(void)
 }
 
 internal void
-XProcessKeypress(b32 *Input)
+XProcessKeypress(x_keyboard *Input)
 {
-	// BUG(gunce): Can't quit the program if using Unicode for some reason.
 	u32 Character = XReadKey();
 	switch(Character)
 	{
 		case CTRL_PLUS('q'):
 		{
-			*Input |= EDITOR_QUIT;
-		}break;
+			Input->CtrlQ = 1;
+		} break;
+		case X_DOWN_ARROW:
+		{
+			Input->DownArrow = 1;
+		} break;
+		case X_UP_ARROW:
+		{
+			Input->UpArrow = 1;
+		} break;
 	}
 }
 
@@ -149,6 +179,10 @@ XSetColor(u32 BitInfo)
 		{
 			XWriteBytes(SEQUENCE_BLACK_FG);
 		}break;
+		case EDITOR_RED_FG | EDITOR_GREEN_FG | EDITOR_BLUE_FG:
+		{
+			XWriteBytes(SEQUENCE_WHITE_FG);
+		}break;
 		case EDITOR_RED_FG:
 		{
 			XWriteBytes(SEQUENCE_RED_FG);
@@ -165,6 +199,14 @@ XSetColor(u32 BitInfo)
 		{
 			XWriteBytes(SEQUENCE_YELLOW_FG);
 		}break;
+		case EDITOR_RED_FG | EDITOR_BLUE_FG:
+		{
+			XWriteBytes(SEQUENCE_MAGENTA_FG);
+		}break;
+		case EDITOR_BLUE_FG | EDITOR_GREEN_FG:
+		{
+			XWriteBytes(SEQUENCE_CYAN_FG);
+		}break;
 		default: ASSERT(!"XSetColor: no such color.");
 	}
 	switch(Background)
@@ -172,6 +214,10 @@ XSetColor(u32 BitInfo)
 		case 0:
 		{
 			XWriteBytes(SEQUENCE_BLACK_BG);
+		}break;
+		case EDITOR_RED_BG | EDITOR_GREEN_BG | EDITOR_BLUE_BG:
+		{
+			XWriteBytes(SEQUENCE_WHITE_BG);
 		}break;
 		case EDITOR_RED_BG:
 		{
@@ -189,14 +235,23 @@ XSetColor(u32 BitInfo)
 		{
 			XWriteBytes(SEQUENCE_YELLOW_BG);
 		}break;
+		case EDITOR_RED_BG | EDITOR_BLUE_BG:
+		{
+			XWriteBytes(SEQUENCE_MAGENTA_BG);
+		}break;
+		case EDITOR_BLUE_BG | EDITOR_GREEN_BG:
+		{
+			XWriteBytes(SEQUENCE_CYAN_BG);
+		}break;
+
 		default: ASSERT(!"XSetColor: no such color.");
 	}
 }
 
 internal void
-XUpdateScreen(X_screen_buffer Buffer)
+XUpdateScreen(x_screen_buffer Buffer)
 {
-	X_pixel *PixelPointer = (X_pixel *)Buffer.Memory;
+	x_pixel *PixelPointer = (x_pixel *)Buffer.Memory;
 	for(u32 RowIndex = 0;
 	    RowIndex < Buffer.Height;
 	    ++RowIndex)
@@ -210,6 +265,9 @@ XUpdateScreen(X_screen_buffer Buffer)
 				XSetColor(PixelPointer->BitInfo);
 				XWriteBytes(&PixelPointer->Character, sizeof(PixelPointer->Character));
 				PixelPointer->BitInfo ^= EDITOR_NEED_TO_DRAW;
+			}else
+			{
+				XWriteBytes(SEQUENCE_NUDGE_CURSOR_RIGHT);
 			}
 			++PixelPointer;
 		}
@@ -256,33 +314,53 @@ int main(void)
 
 	// TODO(gunce): support terminal window resizing.
 	// TODO(gunce): disable scrolling.
-	X_screen_buffer XVideo = {0};
+	x_screen_buffer XVideo = {0};
 	XGetDimensions(&XVideo.Width, &XVideo.Height);
-	ASSERT(XVideo.Width && XVideo.Height);
-	XVideo.Memory = malloc
-	(
-		XVideo.Width * XVideo.Height * sizeof(X_pixel)
-	);
-	ASSERT(XVideo.Memory);
-	// IMPORTANT(gunce): currently you don't need to do anything extra
-	// to map the Linux buffer onto the platform-independant buffer. That
-	// may or may not change some time in the future.
-	editor_screen_buffer Video = {0};
-	Video.Memory = XVideo.Memory;
-	Video.Width = XVideo.Width;
-	Video.Height = XVideo.Height;
-
-	editor_line Choices[EDITOR_MAX_CHOICES] = {0};
-	editor_line *CurrentChoice = Choices;
-	EditorSetToMenu(&Video, Choices);
-
-	XEnableRawMode();
-	b32 Input = 0;
-	while(1)
+	if(XVideo.Width && XVideo.Height)
 	{
-		EditorUpdateScreen(&Video, Input);
-		XUpdateScreen(XVideo);
-		XProcessKeypress(&Input);
+		XVideo.Memory = malloc
+		(
+			XVideo.Width * XVideo.Height * sizeof(x_pixel)
+		);
+		if(XVideo.Memory)
+		{
+			editor_screen_buffer Video = {0};
+			Video.Memory = XVideo.Memory;
+			Video.Width = XVideo.Width;
+			Video.Height = XVideo.Height;
+
+			// NOTE(gunce): nothing to do with the XInput API.
+			x_keyboard XInput = {0};
+			editor_input Input = {0};
+			Input.Quit = &XInput.CtrlQ;
+			Input.Left = &XInput.LeftArrow;
+			Input.Right = &XInput.RightArrow;
+			Input.Up = &XInput.UpArrow;
+			Input.Down = &XInput.DownArrow;
+
+			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
+			if(Memory)
+			{
+				XEnableRawMode();
+				EditorSetToMenu(&Video, Memory);
+				while(1)
+				{
+					EditorUpdateScreen(&Video, Input, Memory);
+					XUpdateScreen(XVideo);
+					XProcessKeypress(&XInput);
+				}
+			}else
+			{
+				// TODO(gunce): logging.
+			}
+		}else
+		{
+			// TODO(gunce): logging.
+		}
+	}else
+	{
+		// TODO(gunce): logging.
 	}
+
 	return(0);
 }
