@@ -33,6 +33,7 @@ typedef struct
 typedef struct
 {
 	b8 *Quit;
+	b8 *Select;
 	b8 *Left;
 	b8 *Right;
 	b8 *Up;

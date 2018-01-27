@@ -38,10 +38,11 @@ typedef uint32_t u32;
 #include "bitmanip.c"
 
 #define CTRL_PLUS(key) ((key) & 0x1f)
-#define X_DOWN_ARROW 0x32
-#define X_UP_ARROW 0x38
-#define X_LEFT_ARROW 0x34
-#define X_RIGHT_ARROW 0x36
+#define X_NUMPAD_2 0x32
+#define X_NUMPAD_8 0x38
+#define X_NUMPAD_4 0x34
+#define X_NUMPAD_6 0x36
+#define X_NUMPAD_5 0x35
 
 #define SEQUENCE_NEWLINE "\r\n", 2
 #define SEQUENCE_CLEARSCREEN "\x1b[2J", 4
@@ -69,10 +70,11 @@ typedef uint32_t u32;
 typedef struct
 {
 	b8 CtrlQ;
-	b8 LeftArrow;
-	b8 RightArrow;
-	b8 UpArrow;
-	b8 DownArrow;
+	b8 NumPad2;
+	b8 NumPad4;
+	b8 NumPad5;
+	b8 NumPad6;
+	b8 NumPad8;
 } x_keyboard;
 
 typedef struct
@@ -131,13 +133,25 @@ XProcessKeypress(x_keyboard *Input)
 		{
 			Input->CtrlQ = 1;
 		} break;
-		case X_DOWN_ARROW:
+		case X_NUMPAD_2:
 		{
-			Input->DownArrow = 1;
+			Input->NumPad2 = 1;
 		} break;
-		case X_UP_ARROW:
+		case X_NUMPAD_8:
 		{
-			Input->UpArrow = 1;
+			Input->NumPad8 = 1;
+		} break;
+		case X_NUMPAD_5:
+		{
+			Input->NumPad5 = 1;
+		} break;
+		case X_NUMPAD_4:
+		{
+			Input->NumPad4 = 1;
+		} break;
+		case X_NUMPAD_6:
+		{
+			Input->NumPad6 = 1;
 		} break;
 	}
 }
@@ -333,10 +347,11 @@ int main(void)
 			x_keyboard XInput = {0};
 			editor_input Input = {0};
 			Input.Quit = &XInput.CtrlQ;
-			Input.Left = &XInput.LeftArrow;
-			Input.Right = &XInput.RightArrow;
-			Input.Up = &XInput.UpArrow;
-			Input.Down = &XInput.DownArrow;
+			Input.Left = &XInput.NumPad4;
+			Input.Right = &XInput.NumPad6;
+			Input.Up = &XInput.NumPad8;
+			Input.Down = &XInput.NumPad2;
+			Input.Select = &XInput.NumPad5;
 
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)
