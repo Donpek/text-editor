@@ -8,7 +8,6 @@ Platform-level TODOs:
 - make 'kilo' boot up a menu (new file, open file, (settings?)).
 - make 'kilo filename' open said file.
 - resizing the terminal.
-- different colors.
 - implement "save" and "save as" (guard against overwriting).
 - implement multiple files opened at once (ctrl-shift-arrow left-right to switch between tabs).
 - auto-save to a seperate copy every minute (file.c -> RECENT_file.c).
@@ -16,11 +15,8 @@ Platform-level TODOs:
 Editor-level TODOs:
 - treat tabs as spaces.
 - settings left/right select.
-- incremental cursor position.
-- line overflow.
 - highlight C-style comments (more like de-highlight; a gray would work well).
 - implement "jump to line number" feature.
-- make the background a pleasing dark color.
 - highlight TODO (red), NOTE (green), BUG (orange), STUDY (blue), IMPORTANT (yellow).
 - implement case-insensitive search.
 - add arrow key movement and CTRL+arrow key movement (don't make it go to the first non-empty character, it's annoying).

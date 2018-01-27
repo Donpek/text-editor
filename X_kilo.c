@@ -69,6 +69,8 @@ typedef uint32_t u32;
 
 typedef struct
 {
+	u32 Character;
+	b8 AnyCharacter;
 	b8 CtrlQ;
 	b8 NumPad2;
 	b8 NumPad4;
@@ -127,6 +129,7 @@ internal void
 XProcessKeypress(x_keyboard *Input)
 {
 	u32 Character = XReadKey();
+	Input->Character = Character;
 	switch(Character)
 	{
 		case CTRL_PLUS('q'):
@@ -153,6 +156,8 @@ XProcessKeypress(x_keyboard *Input)
 		{
 			Input->NumPad6 = 1;
 		} break;
+		default:
+			Input->AnyCharacter = 1;
 	}
 }
 
@@ -352,12 +357,14 @@ int main(void)
 			Input.Up = &XInput.NumPad8;
 			Input.Down = &XInput.NumPad2;
 			Input.Select = &XInput.NumPad5;
+			Input.CurrentCharacter = &XInput.Character;
+			Input.AnyCharacter = &XInput.AnyCharacter;
 
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)
 			{
 				XEnableRawMode();
-				EditorSetToMenu(&Video, Memory);
+				EditorSetToHomeMenu(&Video, Memory);
 				while(1)
 				{
 					EditorUpdateScreen(&Video, Input, Memory);

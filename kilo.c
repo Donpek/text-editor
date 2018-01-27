@@ -1,4 +1,5 @@
 #include "kilo.h"
+#include "str32.c"
 
 internal void
 EditorWritePixel(editor_pixel *Destination, u32 Character,
@@ -63,101 +64,10 @@ EditorFillColumn(editor_screen_buffer *Buffer, u32 Column,
 	}
 }
 
-// TODO(gunce): move this out to str32.c
-internal u32
-Str32GetLength(const u32 *String)
-{
-	u32 Result = 0;
-	u8 *BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		++BytePointer;
-	}
-	u8 *EndOfString = BytePointer;
-	BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		if(*BytePointer < 0xC0) // single-byte character
-		{
-			++Result;
-			++BytePointer;
-		}else if( // double-byte character
-			*BytePointer < 0xE0 && (BytePointer + 1) < EndOfString
-			&& *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 2;
-		}else if( // triple-byte character
-			*BytePointer < 0xF0 && (BytePointer + 2) < EndOfString
-			&& *(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 3;
-		}else if( // quadruple-byte character
-			*BytePointer < 0xF8 && (BytePointer + 3) < EndOfString
-			&& *(BytePointer + 3) > 0x7F &&
-			*(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 4;
-		}else
-		{
-			ASSERT(!"Str32: input string not in utf-8 format.");
-		}
-	}
-	return(Result);
-}
-
-internal void
-Str32GetCharacterLengths(const u32 *String, u8 Results[])
-{
-	u32 CharacterIndex = 0;
-	u8 *BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		++BytePointer;
-	}
-	u8 *EndOfString = BytePointer;
-	BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		if(*BytePointer < 0xC0) // single-byte character
-		{
-			++BytePointer;
-			Results[CharacterIndex] = 1;
-			++CharacterIndex;
-		}else if( // double-byte character
-			*BytePointer < 0xE0 && (BytePointer + 1) < EndOfString
-			&& *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 2;
-			Results[CharacterIndex] = 2;
-			++CharacterIndex;
-		}else if( // triple-byte character
-			*BytePointer < 0xF0 && (BytePointer + 2) < EndOfString
-			&& *(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 3;
-			Results[CharacterIndex] = 3;
-			++CharacterIndex;
-		}else if( // quadruple-byte character
-			*BytePointer < 0xF8 && (BytePointer + 3) < EndOfString
-			&& *(BytePointer + 3) > 0x7F &&
-			*(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 4;
-			Results[CharacterIndex] = 4;
-			++CharacterIndex;
-		}else
-		{
-			ASSERT(!"Str32: input string not in utf-8 format.");
-		}
-	}
-}
-
 internal editor_line
 EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
-								u32 Y, const u32 *Text, u32 BitInfo, u32 Alignment)
+								u32 Y, const u32 *Text, u32 BitInfo, u32 Alignment,
+								u32 Label)
 {
 	editor_line Result = {0};
 	u32 TextLength = Str32GetLength(Text);
@@ -222,14 +132,22 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 			}
 		}
 	}
+	Result.Label = Label;
 	return(Result);
 }
 
 internal u32
-EditorInvertPixelColors(u32 BitInfo)
+EditorInvertColors(u32 BitInfo)
 {
 	u32 Result = EDITOR_COLOR_MASK & (~BitInfo);
 	return(Result);
+}
+
+internal void
+EditorInvertPixel(editor_pixel *Pixel)
+{
+	u32 InvertedColor = EditorInvertColors(Pixel->BitInfo);
+	EditorWritePixel(Pixel, Pixel->Character, InvertedColor, 0);
 }
 
 internal void
@@ -240,7 +158,7 @@ EditorInvertLineColors(editor_line Line)
 			PixelIndex < Line.Length;
 			++PixelIndex)
 	{
-		u32 InvertedColor = EditorInvertPixelColors(PixelPointer->BitInfo);
+		u32 InvertedColor = EditorInvertColors(PixelPointer->BitInfo);
 		EditorWritePixel(PixelPointer, PixelPointer->Character,
 										 InvertedColor, 0);
 		++PixelPointer;
@@ -248,36 +166,64 @@ EditorInvertLineColors(editor_line Line)
 }
 
 internal void
-EditorSetToMenu(editor_screen_buffer *Video, editor_memory *Memory)
+EditorFillPrettyBorders(editor_screen_buffer *Buffer)
 {
 	u32 Red = EDITOR_RED_FG;
 	u32 Yellow = EDITOR_RED_FG | EDITOR_GREEN_FG;
-	u32 Green = EDITOR_GREEN_FG;
+	EditorFillColumn(Buffer, 0, '+', Yellow);
+	EditorFillColumn(Buffer, 1, '=', Yellow);
+	EditorFillColumn(Buffer, 2, '|', Yellow);
+	EditorFillColumn(Buffer, Buffer->Width-3, '|', Yellow);
+	EditorFillColumn(Buffer, Buffer->Width-2, '=', Yellow);
+	EditorFillColumn(Buffer, Buffer->Width-1, '+', Yellow);
+	EditorFillRow(Buffer, 0, 'Ƶ', Red);
+	EditorFillRow(Buffer, Buffer->Height-1, 'Ƶ', Red);
+}
+
+internal editor_pixel *
+EditorGetPixelAddress(editor_screen_buffer *Buffer, u32 X, u32 Y)
+{
+	editor_pixel *Result = Buffer->Memory;
+	Result += X + (Y * Buffer->Width);
+	return(Result);
+}
+
+internal void
+EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
+{
+	Memory->WriteBits = EDITOR_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
-	EditorFillColumn(Video, 0, '+', Yellow);
-	EditorFillColumn(Video, 1, '=', Yellow);
-	EditorFillColumn(Video, 2, '|', Yellow);
-	EditorFillColumn(Video, Video->Width-3, '|', Yellow);
-	EditorFillColumn(Video, Video->Width-2, '=', Yellow);
-	EditorFillColumn(Video, Video->Width-1, '+', Yellow);
-	EditorFillRow(Video, 0, 'Ƶ', Red);
-	EditorFillRow(Video, Video->Height-1, 'Ƶ', Red);
+	EditorFillRow(Video, Video->Height/2, '_', EDITOR_RED_BG);
+	Memory->Cursor = EditorGetPixelAddress(Video, 4, (Video->Height/2) - 1);
+	EditorInvertPixel(Memory->Cursor);
+	EditorFillPrettyBorders(Video);
+	Memory->CurrentMode = EDITOR_INPUT_FILENAME;
+}
+
+internal void
+EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
+{
+	EditorFillWholeScreen(Video, ' ', 0);
+	EditorFillPrettyBorders(Video);
+	u32 Green = EDITOR_GREEN_FG;
 	Memory->Choices[0] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2 - 2,
-		(u32 *)"Open an exƵisting file.", EditorInvertPixelColors(Green),
-		EDITOR_ALIGN_CENTER
+		(u32 *)"Open an exƵisting file.", EditorInvertColors(Green),
+		EDITOR_ALIGN_CENTER, EDITOR_LABEL_OPEN_FILE
 	);
   Memory->Choices[1] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2,
-		(u32 *)"Create a new file.", Green, EDITOR_ALIGN_CENTER
+		(u32 *)"Create a new file.", Green, EDITOR_ALIGN_CENTER,
+		EDITOR_LABEL_NEW_FILE
 	);
 	Memory->Choices[2] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2 + 2,
-		(u32 *)"Show the Ƶettings.", Green, EDITOR_ALIGN_CENTER
+		(u32 *)"Show the Ƶettings.", Green, EDITOR_ALIGN_CENTER,
+		EDITOR_LABEL_SETTINGS
 	);
 	Memory->ChoiceIndex = 0;
 	Memory->ChoiceCount = 3;
-	Memory->CurrentMode = EDITOR_CHOOSING;
+	Memory->CurrentMode = EDITOR_HOME_MENU;
 }
 
 internal void
@@ -291,7 +237,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 	{
 		switch(Memory->CurrentMode)
 		{
-			case EDITOR_CHOOSING:
+			case EDITOR_HOME_MENU:
 			{
 				if(*Input.Down)
 				{
@@ -325,11 +271,39 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 						Memory->Choices[Memory->ChoiceIndex]
 					);
 					*Input.Up = 0;
+				}else if(*Input.Select)
+				{
+					switch(Memory->Choices[Memory->ChoiceIndex].Label)
+					{
+						case EDITOR_LABEL_OPEN_FILE:
+						{
+							EditorSetToOpenFile(Video, Memory);
+						} break;
+						case EDITOR_LABEL_NEW_FILE:
+						{
+
+						} break;
+						case EDITOR_LABEL_SETTINGS:
+						{
+
+						} break;
+						default: ASSERT(!"EditorUpdateScreen: no such label.");
+					}
 				}
 			} break;
-			case EDITOR_EDITING:
+			case EDITOR_INPUT_FILENAME:
 			{
-
+				// TODO(gunce): filter out control characters (Enter, Esc, Tab, etc).
+				// BUG(gunce): multiple-byte characters aren't printing. :(
+				if(*Input.AnyCharacter)
+				{
+					printf("[%08x %08x]", *Input.CurrentCharacter, 'ą');
+					EditorWritePixel(Memory->Cursor, BitManipReverseBytes(*Input.CurrentCharacter),
+													 Memory->WriteBits, 0);
+					++Memory->Cursor;
+					EditorInvertPixel(Memory->Cursor);
+					*Input.AnyCharacter = 0;
+				}//else if()
 			} break;
 			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
 		}
