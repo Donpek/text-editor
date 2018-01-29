@@ -116,7 +116,7 @@ XReadKey(void)
 {
 	i32 BytesRead;
 	u32 Character = 0;
-	while((BytesRead = read(STDIN_FILENO, &Character, 1)) < 1)
+	if((BytesRead = read(STDIN_FILENO, &Character, 4)) > 0)
 	{
 		// NOTE(gunce): not sure about the (errno != EAGAIN) part.
 		// Could potentially be buggy, but I need Cygwin to find out.
@@ -128,14 +128,23 @@ XReadKey(void)
 internal void
 XProcessKeypress(x_keyboard *Input)
 {
+	// TODO(gunce): filter out Alt combinations, arrow keys, home, end, pgdn/up,
+	// delete, insert, F1-F12.
 	u32 Character = XReadKey();
-	Input->Character = Character;
 	switch(Character)
 	{
 		case CTRL_PLUS('q'):
 		{
 			Input->CtrlQ = 1;
 		} break;
+	}
+	if(Str32IsControlCharacter(Character))
+	{
+		return;
+	}
+	Input->Character = Character;
+	switch(Character)
+	{
 		case X_NUMPAD_2:
 		{
 			Input->NumPad2 = 1;

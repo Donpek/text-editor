@@ -293,13 +293,10 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 			} break;
 			case EDITOR_INPUT_FILENAME:
 			{
-				// TODO(gunce): filter out control characters (Enter, Esc, Tab, etc).
-				// BUG(gunce): multiple-byte characters aren't printing. :(
 				if(*Input.AnyCharacter)
 				{
-					printf("[%08x %08x]", *Input.CurrentCharacter, 'ą');
 					EditorWritePixel(Memory->Cursor, BitManipReverseBytes(*Input.CurrentCharacter),
-													 Memory->WriteBits, 0);
+													 Memory->WriteBits, 1);
 					++Memory->Cursor;
 					EditorInvertPixel(Memory->Cursor);
 					*Input.AnyCharacter = 0;
