@@ -41,7 +41,7 @@ typedef struct
 typedef struct
 {
 	u32 *CurrentCharacter;
-	b8 *AnyCharacter;
+	b8 *Anything;
 	b8 *Quit;
 	b8 *Select;
 	b8 *Left;

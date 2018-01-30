@@ -3,7 +3,8 @@ Str32IsControlCharacter(u32 Character)
 {
 	return (Character < 0x1F) || // C0 controls
 				 (Character == 0x7F) || // C1 controls
-				 (Character >= 0x80 && Character < 0x9F); // C2 controls
+				 ((Character & 0xFF) == 0x1B) || // Escape character
+				 (Character >= 0x80 && Character <= 0x9F); // C2 controls
 }
 
 internal u32

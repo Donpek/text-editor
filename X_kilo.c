@@ -67,16 +67,24 @@ typedef uint32_t u32;
 #define SEQUENCE_YELLOW_BG "\x1b[43m", 5
 #define SEQUENCE_RESET_ATTRIBUTES "\x1b[0m", 4
 
+#define X_KEY_COUNT 6
 typedef struct
 {
 	u32 Character;
-	b8 AnyCharacter;
-	b8 CtrlQ;
-	b8 NumPad2;
-	b8 NumPad4;
-	b8 NumPad5;
-	b8 NumPad6;
-	b8 NumPad8;
+	b8 Anything;
+	union
+	{
+		b8 Keys[X_KEY_COUNT];
+		struct
+		{
+			b8 CtrlQ;
+			b8 NumPad2;
+			b8 NumPad4;
+			b8 NumPad5;
+			b8 NumPad6;
+			b8 NumPad8;
+		};
+	};
 } x_keyboard;
 
 typedef struct
@@ -128,8 +136,13 @@ XReadKey(void)
 internal void
 XProcessKeypress(x_keyboard *Input)
 {
-	// TODO(gunce): filter out Alt combinations, arrow keys, home, end, pgdn/up,
-	// delete, insert, F1-F12.
+	Input->Anything = 0;
+	for(u32 KeyIndex = 0;
+		KeyIndex < X_KEY_COUNT;
+		++KeyIndex)
+	{
+		Input->Keys[KeyIndex] = 0;
+	}
 	u32 Character = XReadKey();
 	switch(Character)
 	{
@@ -141,6 +154,9 @@ XProcessKeypress(x_keyboard *Input)
 	if(Str32IsControlCharacter(Character))
 	{
 		return;
+	}else
+	{
+		Input->Anything = 1;
 	}
 	Input->Character = Character;
 	switch(Character)
@@ -165,8 +181,6 @@ XProcessKeypress(x_keyboard *Input)
 		{
 			Input->NumPad6 = 1;
 		} break;
-		default:
-			Input->AnyCharacter = 1;
 	}
 }
 
@@ -367,7 +381,7 @@ int main(void)
 			Input.Down = &XInput.NumPad2;
 			Input.Select = &XInput.NumPad5;
 			Input.CurrentCharacter = &XInput.Character;
-			Input.AnyCharacter = &XInput.AnyCharacter;
+			Input.Anything = &XInput.Anything;
 
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)

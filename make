@@ -1,7 +1,7 @@
 #!/bin/bash
 #This executable builds the text editor application KILO.
 
-cflags="-Wall -Wextra -pedantic -Wno-multichar -std=c99"
+cflags="-Wall -Wextra -pedantic -Wno-multichar -std=c11"
 dbg=""
 platform_file=""
 

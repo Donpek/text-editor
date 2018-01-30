@@ -254,7 +254,6 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
 					);
-					*Input.Down = 0;
 				}else if(*Input.Up)
 				{
 					EditorInvertLineColors(
@@ -270,7 +269,6 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
 					);
-					*Input.Up = 0;
 				}else if(*Input.Select)
 				{
 					switch(Memory->Choices[Memory->ChoiceIndex].Label)
@@ -293,13 +291,12 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 			} break;
 			case EDITOR_INPUT_FILENAME:
 			{
-				if(*Input.AnyCharacter)
+				if(*Input.Anything)
 				{
 					EditorWritePixel(Memory->Cursor, BitManipReverseBytes(*Input.CurrentCharacter),
 													 Memory->WriteBits, 1);
 					++Memory->Cursor;
 					EditorInvertPixel(Memory->Cursor);
-					*Input.AnyCharacter = 0;
 				}//else if()
 			} break;
 			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
