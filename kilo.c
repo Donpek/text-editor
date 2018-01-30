@@ -302,6 +302,28 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						--Memory->Cursor;
 						EditorWritePixel(Memory->Cursor, ' ', 0, 0);
 						EditorInvertPixel(Memory->Cursor);
+					}else if(Input == UNICODE_ENTER)
+					{
+						// NOTE(gunce): file opening usage code.
+						// editor_line InputtedLine = {0};
+						// InputtedLine.Start = Memory->CursorBounds[0];
+						// // TODO(gunce): test if length gets calculated correctly.
+						// InputtedLine.Length = (Memory->Cursor -
+						// 	Memory->CursorBounds[0]) / sizeof(editor_pixel);
+						// // TODO(gunce): implement EditorReadLine.
+						// u32 *InputtedFilename = EditorReadLine(InputtedLine);
+            //
+						// u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
+						// // TODO(gunce): test PlatformReadWholeFile.
+						// i32 BytesRead = PlatformReadWholeFile(InputtedFilename,
+						// 																			ReadOutputLocation);
+						// editor_file OpenedFile = {0};
+						// OpenedFile.Start = (editor_pixel *)ReadOutputLocation;
+						// // TODO(gunce): implement EditorProcessRawFile.
+						// OpenedFile.CharacterCount = EditorProcessRawFile(ReadOutputLocation,
+						// 																						 		 BytesRead);
+						// // TODO(gunce): implement EditorSetToEdit.
+						// EditorSetToEdit(OpenedFile);
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
 				{

@@ -7,6 +7,8 @@
 | good in the way that I'll get to port this editor
 | over to other platforms (OSes and/or terminals). */
 #include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <termios.h>
@@ -268,6 +270,38 @@ PlatformQuit(void)
 	XWriteBytes(SEQUENCE_RESET_ATTRIBUTES);
 	XRefreshScreen();
 	exit(0);
+}
+
+internal i32
+// NOTE(gunce): may be buggy, hasn't been tested.
+PlatformReadWholeFile(u32 *Path, void *Output)
+{
+	// STUDY(gunce): is casting to char * enough or do I need to process
+	// Path for open() to work?
+	i32 Result = 0;
+	i32 Descriptor = open((char *)Path, O_RDONLY);
+	if(Descriptor > -1)
+	{
+		off_t Size = lseek(Descriptor, 0, SEEK_END);
+		if(Size > -1)
+		{
+			lseek(Descriptor, 0, SEEK_SET);
+			ssize_t BytesRead = read(Descriptor, Output, Size);
+			if(BytesRead > -1)
+			{
+				Result = BytesRead;
+			}else
+			{
+				// TODO(gunce): logging.
+			}
+		}else
+		{
+			// TODO(gunce): logging.
+		}
+	}else{
+		// TODO(gunce): logging.
+	}
+	return(Result);
 }
 // NOTE(gunce): platform services above.
 

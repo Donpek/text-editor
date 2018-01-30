@@ -62,6 +62,13 @@ typedef struct
 
 typedef struct
 {
+	editor_pixel *Start;
+	u32 CharacterCount;
+} editor_file;
+
+typedef struct
+{
+	editor_file CurrentFile;
 	editor_line Choices[EDITOR_MAX_CHOICES];
 	editor_pixel *Cursor;
 	editor_pixel *CursorBounds[2];
@@ -72,10 +79,8 @@ typedef struct
 } editor_memory;
 
 // NOTE(gunce): services that the platform provides to the application.
-internal void PlatformQuit();
-
+internal void PlatformQuit(void);
+internal i32 PlatformReadWholeFile(u32 *Path, void *Output);
 // NOTE(gunce): services that the application provides to the platform.
-internal void
-EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
-									 editor_memory *Memory);
+// EditorUpdateScreen
 #endif
