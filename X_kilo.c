@@ -37,13 +37,6 @@ typedef uint32_t u32;
 #include "kilo.h"
 #include "bitmanip.c"
 
-#define CTRL_PLUS(key) ((key) & 0x1f)
-#define X_NUMPAD_2 0x32
-#define X_NUMPAD_8 0x38
-#define X_NUMPAD_4 0x34
-#define X_NUMPAD_6 0x36
-#define X_NUMPAD_5 0x35
-
 #define SEQUENCE_NEWLINE "\r\n", 2
 #define SEQUENCE_CLEARSCREEN "\x1b[2J", 4
 #define SEQUENCE_RESETCURSOR "\x1b[H", 3
@@ -66,26 +59,6 @@ typedef uint32_t u32;
 #define SEQUENCE_MAGENTA_BG "\x1b[45m", 5
 #define SEQUENCE_YELLOW_BG "\x1b[43m", 5
 #define SEQUENCE_RESET_ATTRIBUTES "\x1b[0m", 4
-
-#define X_KEY_COUNT 6
-typedef struct
-{
-	u32 Character;
-	b8 Anything;
-	union
-	{
-		b8 Keys[X_KEY_COUNT];
-		struct
-		{
-			b8 CtrlQ;
-			b8 NumPad2;
-			b8 NumPad4;
-			b8 NumPad5;
-			b8 NumPad6;
-			b8 NumPad8;
-		};
-	};
-} x_keyboard;
 
 typedef struct
 {
@@ -131,57 +104,6 @@ XReadKey(void)
 		ASSERT(BytesRead != -1 && errno != EAGAIN);
 	}
 	return(Character);
-}
-
-internal void
-XProcessKeypress(x_keyboard *Input)
-{
-	Input->Anything = 0;
-	for(u32 KeyIndex = 0;
-		KeyIndex < X_KEY_COUNT;
-		++KeyIndex)
-	{
-		Input->Keys[KeyIndex] = 0;
-	}
-	u32 Character = XReadKey();
-	switch(Character)
-	{
-		case CTRL_PLUS('q'):
-		{
-			Input->CtrlQ = 1;
-		} break;
-	}
-	if(Str32IsControlCharacter(Character))
-	{
-		return;
-	}else
-	{
-		Input->Anything = 1;
-	}
-	Input->Character = Character;
-	switch(Character)
-	{
-		case X_NUMPAD_2:
-		{
-			Input->NumPad2 = 1;
-		} break;
-		case X_NUMPAD_8:
-		{
-			Input->NumPad8 = 1;
-		} break;
-		case X_NUMPAD_5:
-		{
-			Input->NumPad5 = 1;
-		} break;
-		case X_NUMPAD_4:
-		{
-			Input->NumPad4 = 1;
-		} break;
-		case X_NUMPAD_6:
-		{
-			Input->NumPad6 = 1;
-		} break;
-	}
 }
 
 internal void
@@ -371,17 +293,7 @@ int main(void)
 			Video.Width = XVideo.Width;
 			Video.Height = XVideo.Height;
 
-			// NOTE(gunce): nothing to do with the XInput API.
-			x_keyboard XInput = {0};
-			editor_input Input = {0};
-			Input.Quit = &XInput.CtrlQ;
-			Input.Left = &XInput.NumPad4;
-			Input.Right = &XInput.NumPad6;
-			Input.Up = &XInput.NumPad8;
-			Input.Down = &XInput.NumPad2;
-			Input.Select = &XInput.NumPad5;
-			Input.CurrentCharacter = &XInput.Character;
-			Input.Anything = &XInput.Anything;
+			u32 Input = 0;
 
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)
@@ -392,7 +304,7 @@ int main(void)
 				{
 					EditorUpdateScreen(&Video, Input, Memory);
 					XUpdateScreen(XVideo);
-					XProcessKeypress(&XInput);
+					Input = XReadKey();
 				}
 			}else
 			{

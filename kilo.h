@@ -31,24 +31,21 @@
 #define EDITOR_LABEL_NEW_FILE 1
 #define EDITOR_LABEL_SETTINGS 2
 
+#define CTRL_PLUS(key) ((key) & 0x1f)
+#define UNICODE_2 0x32
+#define UNICODE_8 0x38
+#define UNICODE_4 0x34
+#define UNICODE_6 0x36
+#define UNICODE_5 0x35
+#define UNICODE_ENTER 0xD
+#define UNICODE_BACKSPACE 0x7F
+
 typedef struct
 {
 	void *Memory;
 	u32 Width;
 	u32 Height;
 } editor_screen_buffer;
-
-typedef struct
-{
-	u32 *CurrentCharacter;
-	b8 *Anything;
-	b8 *Quit;
-	b8 *Select;
-	b8 *Left;
-	b8 *Right;
-	b8 *Up;
-	b8 *Down;
-} editor_input;
 
 typedef struct
 {
@@ -67,6 +64,7 @@ typedef struct
 {
 	editor_line Choices[EDITOR_MAX_CHOICES];
 	editor_pixel *Cursor;
+	editor_pixel *CursorBounds[2];
 	u32 WriteBits;
 	u8 ChoiceIndex;
 	u8 ChoiceCount;
@@ -78,6 +76,6 @@ internal void PlatformQuit();
 
 // NOTE(gunce): services that the application provides to the platform.
 internal void
-EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
+EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 									 editor_memory *Memory);
 #endif

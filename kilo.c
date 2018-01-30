@@ -193,8 +193,10 @@ EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	Memory->WriteBits = EDITOR_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
-	EditorFillRow(Video, Video->Height/2, '_', EDITOR_RED_BG);
+	EditorFillRow(Video, Video->Height/2, 'T', EDITOR_RED_FG);
 	Memory->Cursor = EditorGetPixelAddress(Video, 4, (Video->Height/2) - 1);
+	Memory->CursorBounds[0] = Memory->Cursor;
+	Memory->CursorBounds[1] = Memory->Cursor + Video->Width - 8;
 	EditorInvertPixel(Memory->Cursor);
 	EditorFillPrettyBorders(Video);
 	Memory->CurrentMode = EDITOR_INPUT_FILENAME;
@@ -227,10 +229,10 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 }
 
 internal void
-EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
+EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 									 editor_memory *Memory)
 {
-	if(*Input.Quit)
+	if(Input == CTRL_PLUS('q'))
 	{
 		PlatformQuit();
 	}else
@@ -239,7 +241,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 		{
 			case EDITOR_HOME_MENU:
 			{
-				if(*Input.Down)
+				if(Input == UNICODE_2)
 				{
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
@@ -254,7 +256,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
 					);
-				}else if(*Input.Up)
+				}else if(Input == UNICODE_8)
 				{
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
@@ -269,7 +271,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 					EditorInvertLineColors(
 						Memory->Choices[Memory->ChoiceIndex]
 					);
-				}else if(*Input.Select)
+				}else if(Input == UNICODE_5)
 				{
 					switch(Memory->Choices[Memory->ChoiceIndex].Label)
 					{
@@ -291,13 +293,22 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 			} break;
 			case EDITOR_INPUT_FILENAME:
 			{
-				if(*Input.Anything)
+				if(Str32IsControlCharacter(Input))
 				{
-					EditorWritePixel(Memory->Cursor, BitManipReverseBytes(*Input.CurrentCharacter),
-													 Memory->WriteBits, 1);
+					if(Input == UNICODE_BACKSPACE &&
+						 Memory->Cursor > Memory->CursorBounds[0])
+					{
+						EditorInvertPixel(Memory->Cursor);
+						--Memory->Cursor;
+						EditorWritePixel(Memory->Cursor, ' ', 0, 0);
+						EditorInvertPixel(Memory->Cursor);
+					}
+				}else if(Memory->Cursor < Memory->CursorBounds[1])
+				{
+					EditorWritePixel(Memory->Cursor, Input, Memory->WriteBits, 0);
 					++Memory->Cursor;
 					EditorInvertPixel(Memory->Cursor);
-				}//else if()
+				}
 			} break;
 			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
 		}
