@@ -8,44 +8,45 @@ Str32IsControlCharacter(u32 Character)
 }
 
 internal u32
+Str32GetCharacterSize(const u8 *Bytes)
+{
+	u32 Result = 0;
+	if(*Bytes < 0xC0) // single-byte character
+	{
+		Result = 1;
+	}else if( // double-byte character
+		*Bytes < 0xE0 && *(Bytes + 1) > 0x7F)
+	{
+		Result = 2;
+	}else if( // triple-byte character
+		*Bytes < 0xF0 && *(Bytes + 2) > 0x7F && *(Bytes + 1) > 0x7F)
+	{
+		Result = 3;
+	}else if( // quadruple-byte character
+		*Bytes < 0xF8 && *(Bytes + 3) > 0x7F &&
+		*(Bytes + 2) > 0x7F && *(Bytes + 1) > 0x7F)
+	{
+		Result = 4;
+	}
+	// NOTE(gunce): if Result == 0, then the character is not in utf-8 format.
+	return(Result);
+}
+
+internal u32
 Str32GetLength(const u32 *String)
 {
 	u32 Result = 0;
 	u8 *BytePointer = (u8 *)String;
 	while(*BytePointer != 0)
 	{
-		++BytePointer;
-	}
-	u8 *EndOfString = BytePointer;
-	BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		if(*BytePointer < 0xC0) // single-byte character
+		u32 CharacterSize = Str32GetCharacterSize(BytePointer);
+		if(CharacterSize)
 		{
 			++Result;
-			++BytePointer;
-		}else if( // double-byte character
-			*BytePointer < 0xE0 && (BytePointer + 1) < EndOfString
-			&& *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 2;
-		}else if( // triple-byte character
-			*BytePointer < 0xF0 && (BytePointer + 2) < EndOfString
-			&& *(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 3;
-		}else if( // quadruple-byte character
-			*BytePointer < 0xF8 && (BytePointer + 3) < EndOfString
-			&& *(BytePointer + 3) > 0x7F &&
-			*(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			++Result;
-			BytePointer += 4;
+			BytePointer += CharacterSize;
 		}else
 		{
-			ASSERT(!"Str32: input string not in utf-8 format.");
+			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
 		}
 	}
 	return(Result);
@@ -58,42 +59,15 @@ Str32GetCharacterLengths(const u32 *String, u8 Results[])
 	u8 *BytePointer = (u8 *)String;
 	while(*BytePointer != 0)
 	{
-		++BytePointer;
-	}
-	u8 *EndOfString = BytePointer;
-	BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
-	{
-		if(*BytePointer < 0xC0) // single-byte character
+		u32 CharacterSize = Str32GetCharacterSize(BytePointer);
+		if(CharacterSize)
 		{
-			++BytePointer;
-			Results[CharacterIndex] = 1;
+			Results[CharacterIndex] = CharacterSize;
 			++CharacterIndex;
-		}else if( // double-byte character
-			*BytePointer < 0xE0 && (BytePointer + 1) < EndOfString
-			&& *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 2;
-			Results[CharacterIndex] = 2;
-			++CharacterIndex;
-		}else if( // triple-byte character
-			*BytePointer < 0xF0 && (BytePointer + 2) < EndOfString
-			&& *(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 3;
-			Results[CharacterIndex] = 3;
-			++CharacterIndex;
-		}else if( // quadruple-byte character
-			*BytePointer < 0xF8 && (BytePointer + 3) < EndOfString
-			&& *(BytePointer + 3) > 0x7F &&
-			*(BytePointer + 2) > 0x7F && *(BytePointer + 1) > 0x7F)
-		{
-			BytePointer += 4;
-			Results[CharacterIndex] = 4;
-			++CharacterIndex;
+			BytePointer += CharacterSize;
 		}else
 		{
-			ASSERT(!"Str32: input string not in utf-8 format.");
+			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
 		}
 	}
 }

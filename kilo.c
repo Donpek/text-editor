@@ -90,7 +90,7 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 	ASSERT(X < Buffer->Width && Y < Buffer->Height);
 	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	PixelPointer += X + (Y * Buffer->Width);
-	Result.Start = PixelPointer;
+	Result.Start = (void *)PixelPointer;
 	u8 *WritePointer = (u8 *)Text;
 	for(u32 CharacterIndex = 0;
 			CharacterIndex < TextLength;
@@ -229,6 +229,24 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 }
 
 internal void
+EditorReadLine(editor_line Line, u32 *Buffer, b8 IsInPixels)
+{
+	for(u32 CharacterIndex = 0;
+			CharacterIndex < Line.Length;
+			++CharacterIndex)
+	{
+		if(IsInPixels)
+		{
+			*Buffer = ((editor_pixel *)Line.Start)[CharacterIndex].Character;
+		}else
+		{
+			*Buffer = ((u32 *)Line.Start)[CharacterIndex];
+		}
+		++Buffer;
+	}
+}
+
+internal void
 EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 									 editor_memory *Memory)
 {
@@ -304,26 +322,33 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						EditorInvertPixel(Memory->Cursor);
 					}else if(Input == UNICODE_ENTER)
 					{
-						// NOTE(gunce): file opening usage code.
 						// editor_line InputtedLine = {0};
 						// InputtedLine.Start = Memory->CursorBounds[0];
 						// // TODO(gunce): test if length gets calculated correctly.
 						// InputtedLine.Length = (Memory->Cursor -
 						// 	Memory->CursorBounds[0]) / sizeof(editor_pixel);
-						// // TODO(gunce): implement EditorReadLine.
-						// u32 *InputtedFilename = EditorReadLine(InputtedLine);
+						// u32 InputtedFilename[InputtedLine.Length];
+						// EditorReadLine(InputtedLine, InputtedFilename);
             //
 						// u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
 						// // TODO(gunce): test PlatformReadWholeFile.
 						// i32 BytesRead = PlatformReadWholeFile(InputtedFilename,
 						// 																			ReadOutputLocation);
-						// editor_file OpenedFile = {0};
-						// OpenedFile.Start = (editor_pixel *)ReadOutputLocation;
-						// // TODO(gunce): implement EditorProcessRawFile.
-						// OpenedFile.CharacterCount = EditorProcessRawFile(ReadOutputLocation,
-						// 																						 		 BytesRead);
-						// // TODO(gunce): implement EditorSetToEdit.
-						// EditorSetToEdit(OpenedFile);
+						// if(BytesRead)
+						// {
+						// 	editor_file OpenedFile = {0};
+						// 	OpenedFile.Bytes = ReadOutputLocation;
+						// 	// NOTE(gunce): beware of overflow.
+						// 	OpenedFile.ByteCount = (u32)BytesRead;
+						// 	OpenedFile.Characters = ReadOutputLocation + BytesRead;
+						// 	OpenedFile.CharacterCount = Str32
+						// 	// TODO(gunce): implement EditorSetToEdit.
+						// 	EditorSetToEdit(OpenedFile);
+						// }else
+						// {
+						// 	// TODO(gunce): SetToMessageBox("Failed to open file.",
+						// 	// EDITOR_INPUT_FILENAME)
+						// }
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
 				{

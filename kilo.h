@@ -2,6 +2,7 @@
 #define KILO
 
 #define EDITOR_MAX_CHOICES 3
+#define EDITOR_MAX_WINDOWS 6
 
 // NOTE(gunce): modes of interaction
 #define EDITOR_HOME_MENU 0
@@ -55,20 +56,33 @@ typedef struct
 
 typedef struct
 {
-	editor_pixel *Start;
+	void *Start;
 	u32 Length;
 	u32 Label;
 } editor_line;
 
 typedef struct
 {
-	editor_pixel *Start;
+	editor_line *Lines;
+	u32 LineCount;
+	u32 *Characters;
 	u32 CharacterCount;
+	u8 *Bytes;
+	u32 ByteCount;
+	b32 IsModified;
 } editor_file;
 
 typedef struct
 {
-	editor_file CurrentFile;
+	u32 X; u32 Y;
+	u32 Width;
+	u32 Height;
+
+} editor_window;
+
+typedef struct
+{
+	editor_window Windows[EDITOR_MAX_WINDOWS];
 	editor_line Choices[EDITOR_MAX_CHOICES];
 	editor_pixel *Cursor;
 	editor_pixel *CursorBounds[2];
