@@ -17,12 +17,6 @@
 #include <errno.h>
 #include <locale.h>
 
-#define ASSERT(expression)\
-if(!(expression))\
-{\
-	printf("EXPRESSION:" #expression "| FILE:%s | LINE:%d\r\n",\
-	 			 __FILE__, __LINE__); exit(1);\
-}
 
 #define internal static
 #define global_variable static
@@ -79,7 +73,6 @@ typedef struct
 global_variable struct termios GlobalOriginalTerminal;
 global_variable b32 GlobalNeedToReverseBytes;
 
-#include "kilo.c"
 
 internal void
 XWriteBytes(const void *Bytes, u8 ByteCount)
@@ -93,6 +86,16 @@ XRefreshScreen(void)
 	XWriteBytes(SEQUENCE_CLEARSCREEN);
 	XWriteBytes(SEQUENCE_RESETCURSOR);
 }
+#define ASSERT(expression)\
+if(!(expression))\
+{\
+	write(STDOUT_FILENO, "\x1b[0m", 4);\
+	write(STDOUT_FILENO, "\x1b[2J", 4);\
+	printf("EXPRESSION:" #expression "| FILE:%s | LINE:%d\r\n",\
+	__FILE__, __LINE__);\
+	exit(1);\
+}
+#include "kilo.c"
 
 internal u32
 XReadKey(void)
@@ -274,12 +277,12 @@ PlatformQuit(void)
 
 internal i32
 // NOTE(gunce): may be buggy, hasn't been tested.
-PlatformReadWholeFile(u32 *Path, void *Output)
+PlatformReadWholeFile(const char *Path, void *Output)
 {
 	// STUDY(gunce): is casting to char * enough or do I need to process
 	// Path for open() to work?
 	i32 Result = 0;
-	i32 Descriptor = open((char *)Path, O_RDONLY);
+	i32 Descriptor = open(Path, O_RDONLY);
 	if(Descriptor > -1)
 	{
 		off_t Size = lseek(Descriptor, 0, SEEK_END);

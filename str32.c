@@ -1,3 +1,13 @@
+#define CTRL_PLUS(key) ((key) & 0x1f)
+#define UNICODE_2 0x32
+#define UNICODE_8 0x38
+#define UNICODE_4 0x34
+#define UNICODE_6 0x36
+#define UNICODE_5 0x35
+#define UNICODE_ENTER 0xD
+#define UNICODE_BACKSPACE 0x7F
+#define UNICODE_NEWLINE 0xA
+
 internal b32
 Str32IsControlCharacter(u32 Character)
 {
@@ -33,17 +43,16 @@ Str32GetCharacterSize(const u8 *Bytes)
 }
 
 internal u32
-Str32GetLength(const u32 *String)
+Str32GetStringLength(const u8 *Bytes)
 {
 	u32 Result = 0;
-	u8 *BytePointer = (u8 *)String;
-	while(*BytePointer != 0)
+	while(*Bytes != 0)
 	{
-		u32 CharacterSize = Str32GetCharacterSize(BytePointer);
+		u32 CharacterSize = Str32GetCharacterSize(Bytes);
 		if(CharacterSize)
 		{
 			++Result;
-			BytePointer += CharacterSize;
+			Bytes += CharacterSize;
 		}else
 		{
 			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
@@ -69,5 +78,32 @@ Str32GetCharacterLengths(const u32 *String, u8 Results[])
 		{
 			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
 		}
+	}
+}
+
+internal u32
+Str32ConvertBytesIntoCharacter(u32 ByteCount, u8 *Bytes)
+{
+	u32 Result = 0;
+	for(u32 ByteIndex = 0;
+			ByteIndex < ByteCount;
+			++ByteIndex)
+	{
+		Result += (*Bytes) << (ByteIndex * BYTES(1));
+	}
+	return(Result);
+}
+
+internal void
+Str32ConvertCharacterIntoBytes(u32 Character, u8 *Output)
+{
+	u32 Reversed = BitManipReverseBytes(Character);
+	u32 ByteCount = Str32GetCharacterSize((u8 *)&Reversed);
+	for(u32 ByteIndex = 0;
+			ByteIndex < ByteCount;
+			++ByteIndex)
+	{
+		*Output = 0xFF & (Reversed >> (ByteIndex * BYTES(1)));
+		++Output;
 	}
 }

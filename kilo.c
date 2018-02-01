@@ -9,7 +9,10 @@ EditorWritePixel(editor_pixel *Destination, u32 Character,
 	{
 		Character = BitManipReverseBytes(Character);
 	}
-	Destination->Character = Character;
+	if(!Str32IsControlCharacter(Character))
+	{
+		Destination->Character = Character;
+	}
 	Destination->BitInfo = BitInfo | EDITOR_NEED_TO_DRAW;
 }
 
@@ -70,7 +73,7 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 								u32 Label)
 {
 	editor_line Result = {0};
-	u32 TextLength = Str32GetLength(Text);
+	u32 TextLength = Str32GetStringLength((u8 *)Text);
 	u8 CharsInBytes[TextLength];
 	Str32GetCharacterLengths(Text, CharsInBytes);
 	Result.Length = TextLength;
@@ -203,6 +206,71 @@ EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 }
 
 internal void
+EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
+								 editor_memory *Memory)
+{
+	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
+	Cursor += Window->X + (Window->Y * Buffer->Width);
+	editor_line Line = *Window->Contents.Lines;
+	u32 LineIndex = 0;
+	u32 *Character = Window->Contents.Characters;
+	u32 RowsAvailable = Window->Height;
+	while(RowsAvailable)
+	{
+		if(Window->Width >= Line.Length)
+		{
+			for(u32 ColumnIndex = 0;
+				ColumnIndex < Line.Length;
+				++ColumnIndex)
+			{
+				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
+				++Cursor;
+				++Character;
+			}
+			Cursor += Buffer->Width - Line.Length;
+			++LineIndex;
+			if(LineIndex != Window->Contents.LineCount)
+			{
+				Line = *(Window->Contents.Lines + LineIndex);
+			}else // window can hold more lines than the file has to give.
+			{
+				return;
+			}
+		}else // line is longer than window is wide.
+		{
+			for(u32 ColumnIndex = 0;
+				ColumnIndex < Window->Width;
+				++ColumnIndex)
+			{
+				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
+				++Cursor;
+				++Character;
+			}
+			Cursor += Buffer->Width - Line.Length;
+			Line.Length -= Window->Width;
+		}
+		--RowsAvailable;
+	}
+}
+
+internal void
+EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
+{
+	EditorFillWholeScreen(Video, ' ', 0);
+	Memory->WriteBits = EDITOR_WHITE_FG;
+	// TODO(gunce): set cursor bounds (line number column, window boundaries).
+	for(u32 WindowIndex = 0;
+			WindowIndex < Memory->WindowCount;
+			++WindowIndex)
+	{
+		EditorFillWindow(Video, &Memory->Windows[WindowIndex], Memory);
+	}
+	Memory->Cursor = (editor_pixel *)Video->Memory + Memory->CursorOffset;
+	EditorInvertPixel(Memory->Cursor);
+	Memory->CurrentMode = EDITOR_EDITING;
+}
+
+internal void
 EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
@@ -228,22 +296,57 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 	Memory->CurrentMode = EDITOR_HOME_MENU;
 }
 
+
 internal void
-EditorReadLine(editor_line Line, u32 *Buffer, b8 IsInPixels)
+EditorReadCharactersFromBytes(u32 ByteCount, u8 *Bytes, u32 *Output)
 {
 	for(u32 CharacterIndex = 0;
-			CharacterIndex < Line.Length;
+			CharacterIndex < ByteCount;
 			++CharacterIndex)
 	{
-		if(IsInPixels)
-		{
-			*Buffer = ((editor_pixel *)Line.Start)[CharacterIndex].Character;
-		}else
-		{
-			*Buffer = ((u32 *)Line.Start)[CharacterIndex];
-		}
-		++Buffer;
+		u32 SizeInBytes = Str32GetCharacterSize(Bytes);
+		*Output = Str32ConvertBytesIntoCharacter(SizeInBytes, Bytes);
+		Bytes += SizeInBytes;
+		++Output;
 	}
+}
+
+internal void
+EditorReadCharactersFromPixels(u32 PixelCount, editor_pixel *Pixels, u32 *Output)
+{
+	for(u32 CharacterIndex = 0;
+			CharacterIndex < PixelCount;
+			++CharacterIndex)
+	{
+		*Output = Pixels[CharacterIndex].Character;
+		++Output;
+	}
+}
+
+
+internal u32
+EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
+{
+	u32 LineCount = 0;
+	--CharacterCount;
+	while(CharacterCount)
+	{
+		editor_line Line = {0};
+		Line.Start = (void *)Characters;
+		do
+		{
+			++Line.Length;
+			--CharacterCount;
+			++Characters;
+		} while(*Characters != '\n');
+		if(Line.Length)
+		{
+			++LineCount;
+			*Output = Line;
+			++Output;
+		}
+	}
+	return(LineCount);
 }
 
 internal void
@@ -322,33 +425,60 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						EditorInvertPixel(Memory->Cursor);
 					}else if(Input == UNICODE_ENTER)
 					{
-						// editor_line InputtedLine = {0};
-						// InputtedLine.Start = Memory->CursorBounds[0];
-						// // TODO(gunce): test if length gets calculated correctly.
-						// InputtedLine.Length = (Memory->Cursor -
-						// 	Memory->CursorBounds[0]) / sizeof(editor_pixel);
-						// u32 InputtedFilename[InputtedLine.Length];
-						// EditorReadLine(InputtedLine, InputtedFilename);
-            //
-						// u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
-						// // TODO(gunce): test PlatformReadWholeFile.
-						// i32 BytesRead = PlatformReadWholeFile(InputtedFilename,
-						// 																			ReadOutputLocation);
-						// if(BytesRead)
-						// {
-						// 	editor_file OpenedFile = {0};
-						// 	OpenedFile.Bytes = ReadOutputLocation;
-						// 	// NOTE(gunce): beware of overflow.
-						// 	OpenedFile.ByteCount = (u32)BytesRead;
-						// 	OpenedFile.Characters = ReadOutputLocation + BytesRead;
-						// 	OpenedFile.CharacterCount = Str32
-						// 	// TODO(gunce): implement EditorSetToEdit.
-						// 	EditorSetToEdit(OpenedFile);
-						// }else
-						// {
-						// 	// TODO(gunce): SetToMessageBox("Failed to open file.",
-						// 	// EDITOR_INPUT_FILENAME)
-						// }
+						editor_line InputtedLine = {0};
+						InputtedLine.Start = Memory->CursorBounds[0];
+						InputtedLine.Length = Memory->Cursor - Memory->CursorBounds[0];
+
+						u32 InputtedFilename[InputtedLine.Length];
+						EditorReadCharactersFromPixels(InputtedLine.Length,
+							InputtedLine.Start, InputtedFilename);
+
+						u8 ConvertedFilename[InputtedLine.Length * 4 + 1];
+						u8 *ConvertedPointer = (u8 *)ConvertedFilename;
+						for(u32 CharacterIndex = 0;
+							CharacterIndex < InputtedLine.Length;
+							++CharacterIndex)
+						{
+							u8 ByteCount = Str32GetCharacterSize((u8 *)(InputtedFilename +
+								CharacterIndex));
+							Str32ConvertCharacterIntoBytes(InputtedFilename[CharacterIndex],
+								ConvertedPointer);
+							ConvertedPointer += ByteCount;
+						}
+						*ConvertedPointer = 0;
+						ConvertedPointer = (u8 *)ConvertedFilename;
+
+						u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
+						i32 BytesRead = PlatformReadWholeFile((char *)ConvertedPointer,
+																									ReadOutputLocation);
+						if(BytesRead)
+						{
+							editor_file OpenedFile = {0};
+							OpenedFile.Bytes = ReadOutputLocation;
+							// NOTE(gunce): beware of overflow.
+							OpenedFile.ByteCount = (u32)BytesRead;
+							OpenedFile.Characters = (u32 *)(ReadOutputLocation + BytesRead);
+							OpenedFile.CharacterCount = Str32GetStringLength(OpenedFile.Bytes);
+							EditorReadCharactersFromBytes(OpenedFile.CharacterCount,
+							 	(void *)OpenedFile.Bytes, OpenedFile.Characters);
+							OpenedFile.Lines = (editor_line *)(OpenedFile.Characters +
+								OpenedFile.CharacterCount);
+							OpenedFile.LineCount = EditorReadLines(OpenedFile.CharacterCount,
+								OpenedFile.Characters, OpenedFile.Lines);
+							Memory->CursorOffset = 0;
+							// TODO(gunce): set window size to be the size of the current tab.
+							Memory->Windows[Memory->WindowCount].Width = Video->Width;
+							Memory->Windows[Memory->WindowCount].Height = Video->Height;
+							Memory->Windows[Memory->WindowCount].X = 0;
+							Memory->Windows[Memory->WindowCount].Y = 0;
+							Memory->Windows[Memory->WindowCount].Contents = OpenedFile;
+							++Memory->WindowCount;
+							EditorSetToEdit(Video, Memory);
+						}else
+						{
+							// TODO(gunce): SetToMessageBox("Failed to open file.",
+							// EDITOR_INPUT_FILENAME)
+						}
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
 				{
@@ -357,6 +487,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 					EditorInvertPixel(Memory->Cursor);
 				}
 			} break;
+			case EDITOR_EDITING: break;
 			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
 		}
 	}

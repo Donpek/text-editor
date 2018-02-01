@@ -32,14 +32,8 @@
 #define EDITOR_LABEL_NEW_FILE 1
 #define EDITOR_LABEL_SETTINGS 2
 
-#define CTRL_PLUS(key) ((key) & 0x1f)
-#define UNICODE_2 0x32
-#define UNICODE_8 0x38
-#define UNICODE_4 0x34
-#define UNICODE_6 0x36
-#define UNICODE_5 0x35
-#define UNICODE_ENTER 0xD
-#define UNICODE_BACKSPACE 0x7F
+#define EDITOR_BYTE 0
+#define EDITOR_PIXEL 1
 
 typedef struct
 {
@@ -77,7 +71,7 @@ typedef struct
 	u32 X; u32 Y;
 	u32 Width;
 	u32 Height;
-
+	editor_file Contents;
 } editor_window;
 
 typedef struct
@@ -86,15 +80,17 @@ typedef struct
 	editor_line Choices[EDITOR_MAX_CHOICES];
 	editor_pixel *Cursor;
 	editor_pixel *CursorBounds[2];
+	u32 CursorOffset;
 	u32 WriteBits;
+	u32 WindowCount;
+	u32 ChoiceCount;
 	u8 ChoiceIndex;
-	u8 ChoiceCount;
 	u8 CurrentMode;
 } editor_memory;
 
 // NOTE(gunce): services that the platform provides to the application.
 internal void PlatformQuit(void);
-internal i32 PlatformReadWholeFile(u32 *Path, void *Output);
+internal i32 PlatformReadWholeFile(const char *Path, void *Output);
 // NOTE(gunce): services that the application provides to the platform.
 // EditorUpdateScreen
 #endif
