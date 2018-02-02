@@ -83,18 +83,17 @@ XWriteBytes(const void *Bytes, u8 ByteCount)
 internal void
 XRefreshScreen(void)
 {
+	XWriteBytes(SEQUENCE_RESET_ATTRIBUTES);
 	XWriteBytes(SEQUENCE_CLEARSCREEN);
 	XWriteBytes(SEQUENCE_RESETCURSOR);
 }
 #define ASSERT(expression)\
 if(!(expression))\
 {\
-	write(STDOUT_FILENO, "\x1b[0m", 4);\
-	write(STDOUT_FILENO, "\x1b[2J", 4);\
-	printf("EXPRESSION:" #expression "| FILE:%s | LINE:%d\r\n",\
+	XRefreshScreen();\
+	fprintf(stderr, "\n\n\rEXPRESSION:" #expression "| FILE:%s | LINE:%d\r\n",\
 	__FILE__, __LINE__);\
-	exit(1);\
-}
+	exit(1);}
 #include "kilo.c"
 
 internal u32
@@ -331,7 +330,6 @@ int main(void)
 			Video.Height = XVideo.Height;
 
 			u32 Input = 0;
-
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)
 			{

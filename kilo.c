@@ -209,6 +209,8 @@ internal void
 EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 								 editor_memory *Memory)
 {
+	ASSERT(Window->Width <= Buffer->Width);
+	ASSERT(Window->Height <= Buffer->Height);
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
 	Cursor += Window->X + (Window->Y * Buffer->Width);
 	editor_line Line = *Window->Contents.Lines;
@@ -246,7 +248,7 @@ EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 				++Cursor;
 				++Character;
 			}
-			Cursor += Buffer->Width - Line.Length;
+			Cursor += Buffer->Width - Window->Width;
 			Line.Length -= Window->Width;
 		}
 		--RowsAvailable;
@@ -328,23 +330,24 @@ internal u32
 EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
 {
 	u32 LineCount = 0;
-	--CharacterCount;
 	while(CharacterCount)
 	{
 		editor_line Line = {0};
 		Line.Start = (void *)Characters;
-		do
+
+		while(*(Characters) != '\n')
 		{
 			++Line.Length;
 			--CharacterCount;
 			++Characters;
-		} while(*Characters != '\n');
-		if(Line.Length)
-		{
-			++LineCount;
-			*Output = Line;
-			++Output;
 		}
+		++Line.Length; // don't forget to add \n
+		--CharacterCount;
+		++Characters;
+
+		++LineCount; // next line
+		*Output = Line;
+		++Output;
 	}
 	return(LineCount);
 }
@@ -467,10 +470,10 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 								OpenedFile.Characters, OpenedFile.Lines);
 							Memory->CursorOffset = 0;
 							// TODO(gunce): set window size to be the size of the current tab.
-							Memory->Windows[Memory->WindowCount].Width = Video->Width;
-							Memory->Windows[Memory->WindowCount].Height = Video->Height;
-							Memory->Windows[Memory->WindowCount].X = 0;
-							Memory->Windows[Memory->WindowCount].Y = 0;
+							Memory->Windows[Memory->WindowCount].Width = Video->Width-2;
+							Memory->Windows[Memory->WindowCount].Height = Video->Height-2;
+							Memory->Windows[Memory->WindowCount].X = 1;
+							Memory->Windows[Memory->WindowCount].Y = 1;
 							Memory->Windows[Memory->WindowCount].Contents = OpenedFile;
 							++Memory->WindowCount;
 							EditorSetToEdit(Video, Memory);
