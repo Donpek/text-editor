@@ -39,7 +39,9 @@ internal void
 EditorFillRow(editor_screen_buffer *Buffer, u32 Row,
 							u32 Character, u32 BitInfo)
 {
+#ifdef DEBUG
 	ASSERT(Row < Buffer->Height);
+#endif
 	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	PixelPointer += (Row * Buffer->Width);
 	for(u32 ColumnIndex = 0;
@@ -55,7 +57,9 @@ internal void
 EditorFillColumn(editor_screen_buffer *Buffer, u32 Column,
 								 u32 Character, u32 BitInfo)
 {
+#ifdef DEBUG
 	ASSERT(Column < Buffer->Width);
+#endif
 	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	PixelPointer += Column;
 	for(u32 RowIndex = 0;
@@ -88,9 +92,16 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 		{
 			X -= TextLength/2;
 		}break;
-		default: ASSERT(!"EditorWriteLine: no such alignemnt.");
+		default:
+		{
+#ifdef DEBUG
+			ASSERT(!"EditorWriteLine: no such alignemnt.");
+#endif
+		}
 	}
+#ifdef DEBUG
 	ASSERT(X < Buffer->Width && Y < Buffer->Height);
+#endif
 	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
 	PixelPointer += X + (Y * Buffer->Width);
 	Result.Start = (void *)PixelPointer;
@@ -119,7 +130,11 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 				CharacterToWrite = *((u32 *)WritePointer);
 			} break;
 			default:
-			ASSERT(!"EditorWriteLine: character not in 1-4 byte range.");
+			{
+#ifdef DEBUG
+				ASSERT(!"EditorWriteLine: character not in 1-4 byte range.");
+#endif
+			}
 		}
 		EditorWritePixel(PixelPointer, CharacterToWrite, BitInfo, 0);
 		WritePointer += CharsInBytes[CharacterIndex];
@@ -129,10 +144,12 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 		{
 			X = 0;
 			++Y;
+#ifdef DEBUG
 			if(Y == Buffer->Height)
 			{
 				ASSERT(!"EditorWriteLine: out of bounds write.");
 			}
+#endif
 		}
 	}
 	Result.Label = Label;
@@ -209,8 +226,10 @@ internal void
 EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 								 editor_memory *Memory)
 {
+#ifdef DEBUG
 	ASSERT(Window->Width <= Buffer->Width);
 	ASSERT(Window->Height <= Buffer->Height);
+#endif
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
 	Cursor += Window->X + (Window->Y * Buffer->Width);
 	editor_line Line = *Window->Contents.Lines;
@@ -254,6 +273,28 @@ EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 		--RowsAvailable;
 	}
 }
+
+// internal void
+// EditorPushToClipBoard(editor_pixel *Start, (Width + 4) * 5), Memory)
+// {
+//
+// }
+
+// internal void
+// EditorSetToMessageBox(editor_screen_buffer *Buffer, editor_memory *Memory,
+// 											u32 *Message, u8 ModeToSwitchToAfterConfirmation)
+// {
+// 	u32 Width = Str32GetStringLength((char *)Message);
+// 	u32 X = (Buffer->Width - Width) / 2;
+// 	u32 Y = (Buffer->Height) / 2;
+// 	editor_pixel *Box = (editor_pixel *)Buffer->Memory;
+// 	Box += X + Y * Buffer->Width;
+// 	EditorPushToClipBoard(Box, (Width + 4) * 5), Memory);
+// 	EditorFillRectangle(Box, Width + 4, 5, '#', EDITOR_GREEN_FG, ' ',
+// 		EDITOR_WHITE_FG);
+// 	Memory->CurrentMode = EDITOR_MESSAGE_BOX;
+// 	Memory->SavedMode = ModeToSwitchToAfterConfirmation;
+// }
 
 internal void
 EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
@@ -324,6 +365,7 @@ EditorReadCharactersFromPixels(u32 PixelCount, editor_pixel *Pixels, u32 *Output
 		++Output;
 	}
 }
+
 
 
 internal u32
@@ -411,7 +453,12 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						{
 
 						} break;
-						default: ASSERT(!"EditorUpdateScreen: no such label.");
+						default:
+						{
+#ifdef DEBUG
+							ASSERT(!"EditorUpdateScreen: no such label.");
+#endif
+						}
 					}
 				}
 			} break;
@@ -479,8 +526,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 							EditorSetToEdit(Video, Memory);
 						}else
 						{
-							// TODO(gunce): SetToMessageBox("Failed to open file.",
-							// EDITOR_INPUT_FILENAME)
+							// SetToMessageBox("Failed to open file.", EDITOR_INPUT_FILENAME)
 						}
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
@@ -491,7 +537,12 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 				}
 			} break;
 			case EDITOR_EDITING: break;
-			default: ASSERT(!"EditorUpdateScreen: no such mode exists.");
+			default:
+			{
+#ifdef DEBUG
+				ASSERT(!"EditorUpdateScreen: no such mode exists.");
+#endif
+			}
 		}
 	}
 }

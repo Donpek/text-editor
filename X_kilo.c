@@ -99,41 +99,52 @@ if(!(expression))\
 internal u32
 XReadKey(void)
 {
-	i32 BytesRead;
 	u32 Character = 0;
-	if((BytesRead = read(STDIN_FILENO, &Character, 4)) > 0)
+#ifdef DEBUG
+	i32 BytesRead = read(STDIN_FILENO, &Character, 4);
+	if(BytesRead > 0)
 	{
 		// NOTE(gunce): not sure about the (errno != EAGAIN) part.
 		// Could potentially be buggy, but I need Cygwin to find out.
 		ASSERT(BytesRead != -1 && errno != EAGAIN);
 	}
+#else
+	read(STDIN_FILENO, &Character, 4);
+#endif
 	return(Character);
 }
 
 internal void
 XDisableRawMode(void)
 {
+#ifdef DEBUG
 	ASSERT(tcsetattr(STDIN_FILENO, TCSAFLUSH,
 		  &GlobalOriginalTerminal) != -1);
+#else
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &GlobalOriginalTerminal);
+#endif
 }
 
 internal void
 XEnableRawMode(void)
 {
 	// TODO(gunce): make it so you can't scroll whilst the program is running.
-	ASSERT(tcgetattr(STDIN_FILENO, &GlobalOriginalTerminal) != -1);
 	atexit(XDisableRawMode);
 	struct termios RawTerminal = GlobalOriginalTerminal;
-	RawTerminal.c_iflag &= ~(IXON | ICRNL | INPCK |
-				BRKINT | ISTRIP);
+	RawTerminal.c_iflag &= ~(IXON | ICRNL | INPCK | BRKINT | ISTRIP);
 	RawTerminal.c_oflag &= ~(OPOST);
 	RawTerminal.c_cflag |= CS8;
-	RawTerminal.c_lflag &= ~(ECHO | IEXTEN | ICANON |
-				 ISIG);
+	RawTerminal.c_lflag &= ~(ECHO | IEXTEN | ICANON | ISIG);
 	RawTerminal.c_cc[VMIN] = 0;
 	RawTerminal.c_cc[VTIME] = 1;
-
+#ifdef DEBUG
+	ASSERT(tcgetattr(STDIN_FILENO, &GlobalOriginalTerminal) != -1);
 	ASSERT(tcsetattr(STDIN_FILENO, TCSAFLUSH, &RawTerminal) != -1);
+#else
+	tcgetattr(STDIN_FILENO, &GlobalOriginalTerminal);
+	tcsetattr(STDIN_FILENO, TCSAFLUSH, &RawTerminal);
+#endif
+
 }
 
 internal void
@@ -175,7 +186,12 @@ XSetColor(u32 BitInfo)
 		{
 			XWriteBytes(SEQUENCE_CYAN_FG);
 		}break;
-		default: ASSERT(!"XSetColor: no such color.");
+		default:
+		{
+#ifdef DEBUG
+			ASSERT(!"XSetColor: no such color.");
+#endif
+		}
 	}
 	switch(Background)
 	{
@@ -212,7 +228,12 @@ XSetColor(u32 BitInfo)
 			XWriteBytes(SEQUENCE_CYAN_BG);
 		}break;
 
-		default: ASSERT(!"XSetColor: no such color.");
+		default:
+		{
+#ifdef DEBUG
+			ASSERT(!"XSetColor: no such color.");
+#endif
+		}
 	}
 }
 

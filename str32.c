@@ -55,7 +55,9 @@ Str32GetStringLength(const u8 *Bytes)
 			Bytes += CharacterSize;
 		}else
 		{
+#ifdef DEBUG
 			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
+#endif
 		}
 	}
 	return(Result);
@@ -76,7 +78,9 @@ Str32GetCharacterLengths(const u32 *String, u8 Results[])
 			BytePointer += CharacterSize;
 		}else
 		{
+#ifdef DEBUG
 			ASSERT(!"Str32Str32GetCharacterSize: not utf-8.");
+#endif
 		}
 	}
 }

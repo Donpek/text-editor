@@ -2,7 +2,7 @@
 #This executable builds the text editor application KILO.
 
 cflags="-Wall -Wextra -pedantic -Wno-multichar -std=c11"
-dbg=""
+option=""
 platform_file=""
 
 if [ "$1" == "linux" ]; then
@@ -11,7 +11,9 @@ if [ "$1" == "linux" ]; then
 fi
 
 if [ "$2" == "debug" ]; then
-	dbg="-DINTERNAL=1 -g"
+	option="-DDEBUG=1 -g"
+elif [ "$2" == "performance" ]; then
+	option="-O1 -finline"
 fi
 
 if [ ! -d "build" ]; then

@@ -8,6 +8,7 @@
 #define EDITOR_HOME_MENU 0
 #define EDITOR_EDITING 1
 #define EDITOR_INPUT_FILENAME 2
+#define EDITOR_MESSAGE_BOX 3
 
 // NOTE(gunce): pixel info bits.
 #define EDITOR_NEED_TO_DRAW 1
@@ -86,6 +87,7 @@ typedef struct
 	u32 ChoiceCount;
 	u8 ChoiceIndex;
 	u8 CurrentMode;
+	u8 SavedMode;
 } editor_memory;
 
 // NOTE(gunce): services that the platform provides to the application.
