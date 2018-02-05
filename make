@@ -11,7 +11,7 @@ if [ "$1" == "linux" ]; then
 fi
 
 if [ "$2" == "debug" ]; then
-	option="-DDEBUG=1 -g"
+	option="-DDEBUG=1 -ddbg"
 elif [ "$2" == "performance" ]; then
 	option="-O1 -finline"
 fi

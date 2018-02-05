@@ -274,27 +274,71 @@ EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 	}
 }
 
-// internal void
-// EditorPushToClipBoard(editor_pixel *Start, (Width + 4) * 5), Memory)
-// {
-//
-// }
+internal void
+EditorFillRectangle(editor_screen_buffer *Buffer, u32 X, u32 Y,
+u32 Width, u32 Height, u32 BorderCharacter, u32 BorderBits,
+u32 FillCharacter, u32 FillBits)
+{
+	editor_pixel *Start = (editor_pixel *)Buffer->Memory + X +
+		Y * Buffer->Width;
+	u32 BufferWidth = Buffer->Width;
 
-// internal void
-// EditorSetToMessageBox(editor_screen_buffer *Buffer, editor_memory *Memory,
-// 											u32 *Message, u8 ModeToSwitchToAfterConfirmation)
-// {
-// 	u32 Width = Str32GetStringLength((char *)Message);
-// 	u32 X = (Buffer->Width - Width) / 2;
-// 	u32 Y = (Buffer->Height) / 2;
-// 	editor_pixel *Box = (editor_pixel *)Buffer->Memory;
-// 	Box += X + Y * Buffer->Width;
-// 	EditorPushToClipBoard(Box, (Width + 4) * 5), Memory);
-// 	EditorFillRectangle(Box, Width + 4, 5, '#', EDITOR_GREEN_FG, ' ',
-// 		EDITOR_WHITE_FG);
-// 	Memory->CurrentMode = EDITOR_MESSAGE_BOX;
-// 	Memory->SavedMode = ModeToSwitchToAfterConfirmation;
-// }
+	editor_pixel *Pixel = Start;
+	Height -= 1;
+	for(u32 HorizontalBorderIndex = 0;
+			HorizontalBorderIndex < Width;
+			++HorizontalBorderIndex)
+	{
+		EditorWritePixel(Pixel,
+			BorderCharacter, BorderBits, 0);
+		EditorWritePixel(Pixel + Height * BufferWidth,
+			BorderCharacter, BorderBits, 0);
+		++Pixel;
+	}
+
+	Pixel = Start + BufferWidth;
+	Height -= 1;
+	for(u32 VerticalBorderIndex = 0;
+			VerticalBorderIndex < Height;
+			++VerticalBorderIndex)
+	{
+		EditorWritePixel(Pixel,
+			BorderCharacter, BorderBits, 0);
+		EditorWritePixel(Pixel + Width - 1,
+			BorderCharacter, BorderBits, 0);
+		Pixel += BufferWidth;
+	}
+
+	Pixel = Start + BufferWidth + 1;
+	Width -= 2;
+	for(u32 RowIndex = 0;
+			RowIndex < Height;
+			++RowIndex)
+	{
+		for(u32 ColumnIndex = 0;
+				ColumnIndex < Width;
+				++ColumnIndex)
+		{
+			EditorWritePixel(Pixel, FillCharacter, FillBits, 0);
+			++Pixel;
+		}
+		Pixel += BufferWidth - Width;
+	}
+}
+
+internal void
+EditorSetToMessageBox(editor_screen_buffer *Buffer, editor_memory *Memory,
+											u32 *Message, u8 ModeToSwitchToAfterConfirmation)
+{
+	u32 Width = Str32GetStringLength((u8 *)Message);
+	u32 X = (Buffer->Width - Width) / 2;
+	u32 Y = (Buffer->Height) / 2;
+	EditorFillRectangle(Buffer, X, Y - 2, Width + 4, 5, '#',
+		EDITOR_GREEN_FG, ' ',	0);
+	EditorWriteLine(Buffer, X + 2, Y, Message, EDITOR_RED_FG, 0, 0);
+	Memory->CurrentMode = EDITOR_MESSAGE_BOX;
+	Memory->SavedMode = ModeToSwitchToAfterConfirmation;
+}
 
 internal void
 EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
@@ -526,7 +570,8 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 							EditorSetToEdit(Video, Memory);
 						}else
 						{
-							// SetToMessageBox("Failed to open file.", EDITOR_INPUT_FILENAME)
+							EditorSetToMessageBox(Video, Memory, (u32 *)"File not found.",
+								EDITOR_HOME_MENU);
 						}
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
@@ -537,6 +582,26 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 				}
 			} break;
 			case EDITOR_EDITING: break;
+			case EDITOR_MESSAGE_BOX:
+			{
+				if(Input)
+				{
+					switch(Memory->SavedMode)
+					{
+						case EDITOR_INPUT_FILENAME:
+						{
+							EditorSetToOpenFile(Video, Memory);
+						} break;
+						case EDITOR_HOME_MENU:
+						{
+							EditorSetToHomeMenu(Video, Memory);
+						} break;
+#ifdef DEBUG
+						default: ASSERT(!"EDITOR_MESSAGE_BOX: implement me!");
+#endif
+					}
+				}
+			} break;
 			default:
 			{
 #ifdef DEBUG
