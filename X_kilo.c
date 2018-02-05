@@ -59,6 +59,12 @@ typedef uint32_t u32;
 typedef struct
 {
 	u32 Character;
+	u32 ByteCount;
+} x_input;
+
+typedef struct
+{
+	u32 Character;
 	u32 BitInfo;
 } x_pixel;
 
@@ -96,22 +102,21 @@ if(!(expression))\
 	exit(1);}
 #include "kilo.c"
 
-internal u32
-XReadKey(void)
+internal void
+XReadKey(x_input *Input)
 {
 	u32 Character = 0;
-#ifdef DEBUG
 	i32 BytesRead = read(STDIN_FILENO, &Character, 4);
+#ifdef DEBUG
 	if(BytesRead > 0)
 	{
 		// NOTE(gunce): not sure about the (errno != EAGAIN) part.
 		// Could potentially be buggy, but I need Cygwin to find out.
 		ASSERT(BytesRead != -1 && errno != EAGAIN);
 	}
-#else
-	read(STDIN_FILENO, &Character, 4);
 #endif
-	return(Character);
+	Input->ByteCount = BytesRead;
+	Input->Character = Character;
 }
 
 internal void
@@ -350,7 +355,8 @@ int main(void)
 			Video.Width = XVideo.Width;
 			Video.Height = XVideo.Height;
 
-			u32 Input = 0;
+			x_input XInput = {0};
+			editor_input Input = {0};
 			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
 			if(Memory)
 			{
@@ -360,7 +366,9 @@ int main(void)
 				{
 					EditorUpdateScreen(&Video, Input, Memory);
 					XUpdateScreen(XVideo);
-					Input = XReadKey();
+					XReadKey(&XInput);
+					Input.ByteCount = XInput.ByteCount;
+					Input.Character = XInput.Character;
 				}
 			}else
 			{

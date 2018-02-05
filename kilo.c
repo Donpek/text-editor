@@ -345,7 +345,6 @@ EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
 	Memory->WriteBits = EDITOR_WHITE_FG;
-	// TODO(gunce): set cursor bounds (line number column, window boundaries).
 	for(u32 WindowIndex = 0;
 			WindowIndex < Memory->WindowCount;
 			++WindowIndex)
@@ -439,10 +438,10 @@ EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
 }
 
 internal void
-EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
+EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 									 editor_memory *Memory)
 {
-	if(Input == CTRL_PLUS('q'))
+	if(Input.Character == CTRL_PLUS('q'))
 	{
 		PlatformQuit();
 	}else
@@ -451,37 +450,50 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 		{
 			case EDITOR_HOME_MENU:
 			{
-				if(Input == UNICODE_2)
+				if((Input.Character & 0xFF) == 0x1B)
 				{
-					EditorInvertLineColors(
-						Memory->Choices[Memory->ChoiceIndex]
-					);
-					if(Memory->ChoiceIndex < Memory->ChoiceCount - 1)
+					Input.Character >>= BYTES(1);
+					if((Input.Character & 0xFF) == '[')
 					{
-						++Memory->ChoiceIndex;
-					}else
-					{
-						Memory->ChoiceIndex = 0;
+						Input.Character >>= BYTES(1);
+						Input.Character &= 0xFF;
+						switch(Input.Character)
+						{
+							case 'A':
+							{
+								EditorInvertLineColors(
+									Memory->Choices[Memory->ChoiceIndex]
+								);
+								if(Memory->ChoiceIndex > 0)
+								{
+									--Memory->ChoiceIndex;
+								}else
+								{
+									Memory->ChoiceIndex = Memory->ChoiceCount - 1;
+								}
+								EditorInvertLineColors(
+									Memory->Choices[Memory->ChoiceIndex]
+								);
+							} break;
+							case 'B':
+							{
+								EditorInvertLineColors(
+									Memory->Choices[Memory->ChoiceIndex]
+								);
+								if(Memory->ChoiceIndex < Memory->ChoiceCount - 1)
+								{
+									++Memory->ChoiceIndex;
+								}else
+								{
+									Memory->ChoiceIndex = 0;
+								}
+								EditorInvertLineColors(
+									Memory->Choices[Memory->ChoiceIndex]
+								);
+							} break;
+						}
 					}
-					EditorInvertLineColors(
-						Memory->Choices[Memory->ChoiceIndex]
-					);
-				}else if(Input == UNICODE_8)
-				{
-					EditorInvertLineColors(
-						Memory->Choices[Memory->ChoiceIndex]
-					);
-					if(Memory->ChoiceIndex > 0)
-					{
-						--Memory->ChoiceIndex;
-					}else
-					{
-						Memory->ChoiceIndex = Memory->ChoiceCount - 1;
-					}
-					EditorInvertLineColors(
-						Memory->Choices[Memory->ChoiceIndex]
-					);
-				}else if(Input == UNICODE_5)
+				}else if(Input.Character == UNICODE_ENTER)
 				{
 					switch(Memory->Choices[Memory->ChoiceIndex].Label)
 					{
@@ -491,11 +503,11 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						} break;
 						case EDITOR_LABEL_NEW_FILE:
 						{
-
+							// TODO(gunce): blank file opening logic.
 						} break;
 						case EDITOR_LABEL_SETTINGS:
 						{
-
+							// TODO(gunce): settings screen.
 						} break;
 						default:
 						{
@@ -508,16 +520,18 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 			} break;
 			case EDITOR_INPUT_FILENAME:
 			{
-				if(Str32IsControlCharacter(Input))
+				// TODO(gunce): add arrow keys and shifting the whole string after
+				// deleting a character
+				if(Str32IsControlCharacter(Input.Character))
 				{
-					if(Input == UNICODE_BACKSPACE &&
+					if(Input.Character == UNICODE_BACKSPACE &&
 						 Memory->Cursor > Memory->CursorBounds[0])
 					{
 						EditorInvertPixel(Memory->Cursor);
 						--Memory->Cursor;
 						EditorWritePixel(Memory->Cursor, ' ', 0, 0);
 						EditorInvertPixel(Memory->Cursor);
-					}else if(Input == UNICODE_ENTER)
+					}else if(Input.Character == UNICODE_ENTER)
 					{
 						editor_line InputtedLine = {0};
 						InputtedLine.Start = Memory->CursorBounds[0];
@@ -576,15 +590,58 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
 				{
-					EditorWritePixel(Memory->Cursor, Input, Memory->WriteBits, 0);
+					EditorWritePixel(Memory->Cursor, Input.Character, Memory->WriteBits, 0);
 					++Memory->Cursor;
 					EditorInvertPixel(Memory->Cursor);
 				}
 			} break;
-			case EDITOR_EDITING: break;
+			case EDITOR_EDITING:
+			{
+				if(Str32IsControlCharacter(Input.Character))
+				{
+					// STUDY(gunce): whether this logic is platform-dependent.
+					if((Input.Character & 0xFF) == 0x1B)
+					{
+						Input.Character >>= BYTES(1);
+						if((Input.Character & 0xFF) == '[')
+						{
+							Input.Character >>= BYTES(1);
+							Input.Character &= 0xFF;
+							switch(Input.Character)
+							{
+								case 'A':
+								{
+									EditorInvertPixel(Memory->Cursor);
+									Memory->Cursor -= Video->Width;
+								} break;
+								case 'B':
+								{
+									EditorInvertPixel(Memory->Cursor);
+									Memory->Cursor += Video->Width;
+								} break;
+								case 'C':
+								{
+									EditorInvertPixel(Memory->Cursor);
+									++Memory->Cursor;
+								} break;
+								case 'D':
+								{
+									EditorInvertPixel(Memory->Cursor);
+									--Memory->Cursor;
+								} break;
+							}
+							EditorInvertPixel(Memory->Cursor);
+						}
+					}
+					// TODO(gunce): key combination features.
+				}else
+				{
+					// TODO(gunce): text input logic.
+				}
+			} break;
 			case EDITOR_MESSAGE_BOX:
 			{
-				if(Input)
+				if(Input.Character)
 				{
 					switch(Memory->SavedMode)
 					{
@@ -595,6 +652,10 @@ EditorUpdateScreen(editor_screen_buffer *Video, u32 Input,
 						case EDITOR_HOME_MENU:
 						{
 							EditorSetToHomeMenu(Video, Memory);
+						} break;
+						case EDITOR_EDITING:
+						{
+							EditorSetToEdit(Video, Memory);
 						} break;
 #ifdef DEBUG
 						default: ASSERT(!"EDITOR_MESSAGE_BOX: implement me!");

@@ -58,6 +58,12 @@ typedef struct
 
 typedef struct
 {
+	u32 Character;
+	u32 ByteCount;
+} editor_input;
+
+typedef struct
+{
 	editor_line *Lines;
 	u32 LineCount;
 	u32 *Characters;
