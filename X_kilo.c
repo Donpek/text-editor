@@ -280,6 +280,11 @@ XUpdateScreen(x_screen_buffer Buffer)
 				PixelPointer->BitInfo ^= EDITOR_NEED_TO_DRAW;
 			}
 		}
+		// if(RowIndex == (Buffer.Height-1))
+		// {
+		// 	XWriteBytes(SEQUENCE_NEWLINE);
+		// }
+		// XWriteBytes(SEQUENCE_RESETCURSOR);
 	}
 }
 
