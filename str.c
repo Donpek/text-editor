@@ -8,6 +8,57 @@
 #define UNICODE_BACKSPACE 0x7F
 #define UNICODE_NEWLINE 0xA
 
+internal u32
+Str8IntToString(u32 Number, u8 *Destination, u32 MaxDigitCount)
+{
+	u32 DigitCount = 1;
+	u32 NumberCopy = Number;
+	while(NumberCopy)
+	{
+		NumberCopy /= 10;
+		++DigitCount;
+	}
+	if(MaxDigitCount < DigitCount)
+	{
+		return(0);
+	}
+
+	u32 DigitIndex;
+	for(DigitIndex = DigitCount - 1;
+			DigitIndex > 0;
+			--DigitIndex, Number /= 10)
+	{
+		switch(Number % 10)
+		{
+			case 0: Destination[DigitIndex] = '0'; break;
+			case 1: Destination[DigitIndex] = '1'; break;
+			case 2: Destination[DigitIndex] = '2'; break;
+			case 3: Destination[DigitIndex] = '3'; break;
+			case 4: Destination[DigitIndex] = '4'; break;
+			case 5: Destination[DigitIndex] = '5'; break;
+			case 6: Destination[DigitIndex] = '6'; break;
+			case 7: Destination[DigitIndex] = '7'; break;
+			case 8: Destination[DigitIndex] = '8'; break;
+			case 9: Destination[DigitIndex] = '9'; break;
+		}
+	}
+	// Parse the remaining first digit.
+	switch(Number)
+	{
+		case 0: *Destination = '0'; break;
+		case 1: *Destination = '1'; break;
+		case 2: *Destination = '2'; break;
+		case 3: *Destination = '3'; break;
+		case 4: *Destination = '4'; break;
+		case 5: *Destination = '5'; break;
+		case 6: *Destination = '6'; break;
+		case 7: *Destination = '7'; break;
+		case 8: *Destination = '8'; break;
+		case 9: *Destination = '9'; break;
+	}
+	return(DigitCount);
+}
+
 internal b32
 Str32IsControlCharacter(u32 Character)
 {
