@@ -10,11 +10,16 @@ if [ "$1" == "linux" ]; then
 #elif <...>
 fi
 
-if [ "$2" == "debug" ]; then
-	option="-DDEBUG=1 -g"
-elif [ "$2" == "performance" ]; then
-	option="-O1 -finline -funroll-loops"
-fi
+case "$2" in
+"debug")
+	option+="-DDEBUG=1 -g"
+;;
+"profile")
+	option+="-pg "
+;&
+"optimize")
+	option+="-O1 -finline -funroll-loops"
+esac
 
 if [ ! -d "build" ]; then
 	mkdir build

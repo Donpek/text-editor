@@ -80,7 +80,7 @@ global_variable struct termios GlobalOriginalTerminal;
 global_variable b32 GlobalNeedToReverseBytes;
 
 
-internal u32
+internal u8
 XWriteBytes(const void *Bytes, u8 ByteCount)
 {
 	i32 BytesWritten = write(STDOUT_FILENO, Bytes, ByteCount);
