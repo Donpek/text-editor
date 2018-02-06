@@ -1,5 +1,5 @@
 #include "kilo.h"
-#include "str32.c"
+#include "str.c"
 
 internal void
 EditorWritePixel(editor_pixel *Destination, u32 Character,

@@ -252,31 +252,35 @@ internal void
 XUpdateScreen(x_screen_buffer Buffer)
 {
 	x_pixel *PixelPointer = (x_pixel *)Buffer.Memory;
-	for(u32 RowIndex = 0;
-	    RowIndex < Buffer.Height;
+	u8 Sequence[32];
+	u8 SequenceLength;
+
+	for(u32 RowIndex = 1;
+	    RowIndex <= Buffer.Height;
 	    ++RowIndex)
 	{
-		for(u32 ColumnIndex = 0;
-		    ColumnIndex < Buffer.Width;
-		    ++ColumnIndex)
+		for(u32 ColumnIndex = 1;
+		    ColumnIndex <= Buffer.Width;
+		    ++ColumnIndex, ++PixelPointer)
 		{
 			if(PixelPointer->BitInfo & EDITOR_NEED_TO_DRAW)
 			{
+				Sequence[0] = 0x1B; Sequence[1] = '[';
+				SequenceLength = 2;
+				SequenceLength += Str8IntToString(RowIndex,
+					Sequence + SequenceLength, 12);
+				Sequence[SequenceLength++] = ';';
+				SequenceLength += Str8IntToString(ColumnIndex,
+					Sequence + SequenceLength, 16);
+				Sequence[SequenceLength++] = 'H';
+				// Move cursor to the correct position.
+				XWriteBytes(Sequence, SequenceLength);
 				XSetColor(PixelPointer->BitInfo);
 				XWriteBytes(&PixelPointer->Character, sizeof(PixelPointer->Character));
 				PixelPointer->BitInfo ^= EDITOR_NEED_TO_DRAW;
-			}else
-			{
-				XWriteBytes(SEQUENCE_NUDGE_CURSOR_RIGHT);
 			}
-			++PixelPointer;
-		}
-		if(RowIndex != (Buffer.Height-1))
-		{
-			XWriteBytes(SEQUENCE_NEWLINE);
 		}
 	}
-	XWriteBytes(SEQUENCE_RESETCURSOR);
 }
 
 internal void
