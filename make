@@ -11,9 +11,9 @@ if [ "$1" == "linux" ]; then
 fi
 
 if [ "$2" == "debug" ]; then
-	option="-DDEBUG=1 -ddbg"
+	option="-DDEBUG=1 -g"
 elif [ "$2" == "performance" ]; then
-	option="-O1 -finline"
+	option="-O1 -finline -funroll-loops"
 fi
 
 if [ ! -d "build" ]; then
@@ -23,5 +23,5 @@ else
 		echo "removed kilo"
 		rm "kilo"
 	fi
-	gcc $dbg $platform_file -o build/kilo $cflags
+	gcc $option $platform_file -o build/kilo $cflags
 fi

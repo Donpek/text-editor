@@ -80,10 +80,16 @@ global_variable struct termios GlobalOriginalTerminal;
 global_variable b32 GlobalNeedToReverseBytes;
 
 
-internal void
+internal u32
 XWriteBytes(const void *Bytes, u8 ByteCount)
 {
-	write(STDOUT_FILENO, Bytes, ByteCount);
+	i32 BytesWritten = write(STDOUT_FILENO, Bytes, ByteCount);
+	if(BytesWritten == ByteCount){
+		return(1);
+	}else
+	{
+		return(0);
+	}
 }
 
 internal void
