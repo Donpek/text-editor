@@ -1,6 +1,17 @@
 #ifndef KILO
 #define KILO
 
+#define internal static
+#define global_variable static
+
+#include <stdint.h>
+typedef int32_t b32;
+typedef int8_t b8;
+typedef int8_t i8;
+typedef uint8_t u8;
+typedef int32_t i32;
+typedef uint32_t u32;
+
 #define EDITOR_MAX_CHOICES 3
 #define EDITOR_MAX_WINDOWS 6
 
@@ -78,6 +89,7 @@ typedef struct
 	u32 X; u32 Y;
 	u32 Width;
 	u32 Height;
+	u32 RenderOffset;
 	editor_file Contents;
 } editor_window;
 

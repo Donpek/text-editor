@@ -28,5 +28,5 @@ else
 		echo "removed kilo"
 		rm "kilo"
 	fi
-	gcc $option $platform_file -o build/kilo $cflags
+	gcc $option src/$platform_file -o build/kilo $cflags
 fi

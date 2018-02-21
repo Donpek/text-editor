@@ -1,203 +1,29 @@
-#include "kilo.h"
 #include "str.c"
+#include "drawing_functions.c"
 
 internal void
-EditorWritePixel(editor_pixel *Destination, u32 Character,
-								 u32 BitInfo, b32 CheckForReversal)
+EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
+						 i32 Amount)
 {
-	if(CheckForReversal && GlobalNeedToReverseBytes)
-	{
-		Character = BitManipReverseBytes(Character);
-	}
-	if(!Str32IsControlCharacter(Character))
-	{
-		Destination->Character = Character;
-	}
-	Destination->BitInfo = BitInfo | EDITOR_NEED_TO_DRAW;
-}
+	editor_window *Windows = Memory->Windows;
+	editor_window CurrentWindow = Windows[0];
 
-internal void
-EditorFillWholeScreen(editor_screen_buffer *Buffer, u32 Character,
-											u32 BitInfo)
-{
-	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
-	for(u32 RowIndex = 0;
-	    RowIndex < Buffer->Height;
-	    ++RowIndex)
+	if(Amount < 0 && CurrentWindow.RenderOffset < Amount)
 	{
-		for(u32 ColumnIndex = 0;
-		    ColumnIndex < Buffer->Width;
-		    ++ColumnIndex)
+		return;
+	}
+	u32 LowerLimit = CurrentWindow.Height - CurrentWindow.Y;
+	if(CurrentWindow.RenderOffset < LowerLimit)
+	{
+		Windows[0].RenderOffset += Amount;
+		EditorFillWholeScreen(Buffer, 'X', EDITOR_RED_FG);
+		for(u32 WindowIndex = 0;
+				WindowIndex < Memory->WindowCount;
+				++WindowIndex)
 		{
-			EditorWritePixel(PixelPointer, Character, BitInfo, 1);
-			++PixelPointer;
+			EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
 		}
 	}
-}
-
-internal void
-EditorFillRow(editor_screen_buffer *Buffer, u32 Row,
-							u32 Character, u32 BitInfo)
-{
-#ifdef DEBUG
-	ASSERT(Row < Buffer->Height);
-#endif
-	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
-	PixelPointer += (Row * Buffer->Width);
-	for(u32 ColumnIndex = 0;
-	    ColumnIndex < Buffer->Width;
-	    ++ColumnIndex)
-	{
-		EditorWritePixel(PixelPointer, Character, BitInfo, 1);
-		++PixelPointer;
-	}
-}
-
-internal void
-EditorFillColumn(editor_screen_buffer *Buffer, u32 Column,
-								 u32 Character, u32 BitInfo)
-{
-#ifdef DEBUG
-	ASSERT(Column < Buffer->Width);
-#endif
-	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
-	PixelPointer += Column;
-	for(u32 RowIndex = 0;
-	    RowIndex < Buffer->Height;
-	    ++RowIndex)
-	{
-		EditorWritePixel(PixelPointer, Character, BitInfo, 1);
-		PixelPointer += Buffer->Width;
-	}
-}
-
-internal editor_line
-EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
-								u32 Y, const u32 *Text, u32 BitInfo, u32 Alignment,
-								u32 Label)
-{
-	editor_line Result = {0};
-	u32 TextLength = Str32GetStringLength((u8 *)Text);
-	u8 CharsInBytes[TextLength];
-	Str32GetCharacterLengths(Text, CharsInBytes);
-	Result.Length = TextLength;
-	switch(Alignment)
-	{
-		case EDITOR_ALIGN_LEFT: break;
-		case EDITOR_ALIGN_RIGHT:
-		{
-			X -= TextLength;
-		}break;
-		case EDITOR_ALIGN_CENTER:
-		{
-			X -= TextLength/2;
-		}break;
-		default:
-		{
-#ifdef DEBUG
-			ASSERT(!"EditorWriteLine: no such alignemnt.");
-#endif
-		}
-	}
-#ifdef DEBUG
-	ASSERT(X < Buffer->Width && Y < Buffer->Height);
-#endif
-	editor_pixel *PixelPointer = (editor_pixel *)Buffer->Memory;
-	PixelPointer += X + (Y * Buffer->Width);
-	Result.Start = (void *)PixelPointer;
-	u8 *WritePointer = (u8 *)Text;
-	for(u32 CharacterIndex = 0;
-			CharacterIndex < TextLength;
-			++CharacterIndex)
-	{
-		u32 CharacterToWrite = 0;
-		switch(CharsInBytes[CharacterIndex])
-		{
-			case 1:
-			{
-				CharacterToWrite = *((u32 *)WritePointer) & 0x000000FF;
-			} break;
-			case 2:
-			{
-				CharacterToWrite = *((u32 *)WritePointer) & 0x0000FFFF;
-			} break;
-			case 3:
-			{
-				CharacterToWrite = *((u32 *)WritePointer) & 0x00FFFFFF;
-			} break;
-			case 4:
-			{
-				CharacterToWrite = *((u32 *)WritePointer);
-			} break;
-			default:
-			{
-#ifdef DEBUG
-				ASSERT(!"EditorWriteLine: character not in 1-4 byte range.");
-#endif
-			}
-		}
-		EditorWritePixel(PixelPointer, CharacterToWrite, BitInfo, 0);
-		WritePointer += CharsInBytes[CharacterIndex];
-		++X;
-		++PixelPointer;
-		if(X == Buffer->Width)
-		{
-			X = 0;
-			++Y;
-#ifdef DEBUG
-			if(Y == Buffer->Height)
-			{
-				ASSERT(!"EditorWriteLine: out of bounds write.");
-			}
-#endif
-		}
-	}
-	Result.Label = Label;
-	return(Result);
-}
-
-internal u32
-EditorInvertColors(u32 BitInfo)
-{
-	u32 Result = EDITOR_COLOR_MASK & (~BitInfo);
-	return(Result);
-}
-
-internal void
-EditorInvertPixel(editor_pixel *Pixel)
-{
-	u32 InvertedColor = EditorInvertColors(Pixel->BitInfo);
-	EditorWritePixel(Pixel, Pixel->Character, InvertedColor, 0);
-}
-
-internal void
-EditorInvertLineColors(editor_line Line)
-{
-	editor_pixel *PixelPointer = Line.Start;
-	for(u32 PixelIndex = 0;
-			PixelIndex < Line.Length;
-			++PixelIndex)
-	{
-		u32 InvertedColor = EditorInvertColors(PixelPointer->BitInfo);
-		EditorWritePixel(PixelPointer, PixelPointer->Character,
-										 InvertedColor, 0);
-		++PixelPointer;
-	}
-}
-
-internal void
-EditorFillPrettyBorders(editor_screen_buffer *Buffer)
-{
-	u32 Red = EDITOR_RED_FG;
-	u32 Yellow = EDITOR_RED_FG | EDITOR_GREEN_FG;
-	EditorFillColumn(Buffer, 0, '+', Yellow);
-	EditorFillColumn(Buffer, 1, '=', Yellow);
-	EditorFillColumn(Buffer, 2, '|', Yellow);
-	EditorFillColumn(Buffer, Buffer->Width-3, '|', Yellow);
-	EditorFillColumn(Buffer, Buffer->Width-2, '=', Yellow);
-	EditorFillColumn(Buffer, Buffer->Width-1, '+', Yellow);
-	EditorFillRow(Buffer, 0, 'Ƶ', Red);
-	EditorFillRow(Buffer, Buffer->Height-1, 'Ƶ', Red);
 }
 
 internal editor_pixel *
@@ -220,110 +46,6 @@ EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 	EditorInvertPixel(Memory->Cursor);
 	EditorFillPrettyBorders(Video);
 	Memory->CurrentMode = EDITOR_INPUT_FILENAME;
-}
-
-internal void
-EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
-								 editor_memory *Memory)
-{
-#ifdef DEBUG
-	ASSERT(Window->Width <= Buffer->Width);
-	ASSERT(Window->Height <= Buffer->Height);
-#endif
-	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
-	Cursor += Window->X + (Window->Y * Buffer->Width);
-	editor_line Line = *Window->Contents.Lines;
-	u32 LineIndex = 0;
-	u32 *Character = Window->Contents.Characters;
-	u32 RowsAvailable = Window->Height;
-	while(RowsAvailable)
-	{
-		if(Window->Width >= Line.Length)
-		{
-			for(u32 ColumnIndex = 0;
-				ColumnIndex < Line.Length;
-				++ColumnIndex)
-			{
-				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
-				++Cursor;
-				++Character;
-			}
-			Cursor += Buffer->Width - Line.Length;
-			++LineIndex;
-			if(LineIndex != Window->Contents.LineCount)
-			{
-				Line = *(Window->Contents.Lines + LineIndex);
-			}else // window can hold more lines than the file has to give.
-			{
-				return;
-			}
-		}else // line is longer than window is wide.
-		{
-			for(u32 ColumnIndex = 0;
-				ColumnIndex < Window->Width;
-				++ColumnIndex)
-			{
-				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
-				++Cursor;
-				++Character;
-			}
-			Cursor += Buffer->Width - Window->Width;
-			Line.Length -= Window->Width;
-		}
-		--RowsAvailable;
-	}
-}
-
-internal void
-EditorFillRectangle(editor_screen_buffer *Buffer, u32 X, u32 Y,
-u32 Width, u32 Height, u32 BorderCharacter, u32 BorderBits,
-u32 FillCharacter, u32 FillBits)
-{
-	editor_pixel *Start = (editor_pixel *)Buffer->Memory + X +
-		Y * Buffer->Width;
-	u32 BufferWidth = Buffer->Width;
-
-	editor_pixel *Pixel = Start;
-	Height -= 1;
-	for(u32 HorizontalBorderIndex = 0;
-			HorizontalBorderIndex < Width;
-			++HorizontalBorderIndex)
-	{
-		EditorWritePixel(Pixel,
-			BorderCharacter, BorderBits, 0);
-		EditorWritePixel(Pixel + Height * BufferWidth,
-			BorderCharacter, BorderBits, 0);
-		++Pixel;
-	}
-
-	Pixel = Start + BufferWidth;
-	Height -= 1;
-	for(u32 VerticalBorderIndex = 0;
-			VerticalBorderIndex < Height;
-			++VerticalBorderIndex)
-	{
-		EditorWritePixel(Pixel,
-			BorderCharacter, BorderBits, 0);
-		EditorWritePixel(Pixel + Width - 1,
-			BorderCharacter, BorderBits, 0);
-		Pixel += BufferWidth;
-	}
-
-	Pixel = Start + BufferWidth + 1;
-	Width -= 2;
-	for(u32 RowIndex = 0;
-			RowIndex < Height;
-			++RowIndex)
-	{
-		for(u32 ColumnIndex = 0;
-				ColumnIndex < Width;
-				++ColumnIndex)
-		{
-			EditorWritePixel(Pixel, FillCharacter, FillBits, 0);
-			++Pixel;
-		}
-		Pixel += BufferWidth - Width;
-	}
 }
 
 internal void
@@ -382,7 +104,6 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 	Memory->CurrentMode = EDITOR_HOME_MENU;
 }
 
-
 internal void
 EditorReadCharactersFromBytes(u32 ByteCount, u8 *Bytes, u32 *Output)
 {
@@ -408,8 +129,6 @@ EditorReadCharactersFromPixels(u32 PixelCount, editor_pixel *Pixels, u32 *Output
 		++Output;
 	}
 }
-
-
 
 internal u32
 EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
@@ -611,26 +330,19 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 							{
 								case 'A':
 								{
-									EditorInvertPixel(Memory->Cursor);
-									Memory->Cursor -= Video->Width;
+									EditorScroll(Video, Memory, -1);
 								} break;
 								case 'B':
 								{
-									EditorInvertPixel(Memory->Cursor);
-									Memory->Cursor += Video->Width;
+									EditorScroll(Video, Memory, 1);
 								} break;
 								case 'C':
 								{
-									EditorInvertPixel(Memory->Cursor);
-									++Memory->Cursor;
 								} break;
 								case 'D':
 								{
-									EditorInvertPixel(Memory->Cursor);
-									--Memory->Cursor;
 								} break;
 							}
-							EditorInvertPixel(Memory->Cursor);
 						}
 					}
 					// TODO(gunce): key combination features.

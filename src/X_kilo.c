@@ -17,20 +17,8 @@
 #include <errno.h>
 #include <locale.h>
 
-
-#define internal static
-#define global_variable static
-
-#include <stdint.h>
-typedef int32_t b32;
-typedef int8_t b8;
-typedef int8_t i8;
-typedef uint8_t u8;
-typedef int32_t i32;
-typedef uint32_t u32;
-
 // NOTE(gunce): internal stuff.
-#include "kilo.h"
+#include "../kilo.h"
 #include "bitmanip.c"
 
 #define SEQUENCE_NEWLINE "\r\n", 2
