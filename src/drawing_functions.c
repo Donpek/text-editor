@@ -207,10 +207,9 @@ EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 #endif
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
 	Cursor += Window->X + (Window->Y * Buffer->Width);
-	editor_line Line = *Window->Contents.Lines;
-	u32 LineIndex = 0;
-	u32 *Character =
-	(u32 *)((editor_line *)Window->Contents.Lines + Window->RenderOffset)->Start;
+	editor_line Line = *(Window->Contents.Lines + Window->RenderOffset);
+	u32 LineIndex = Window->RenderOffset;
+	u32 *Character = (u32 *)(Line.Start);
 	u32 RowsAvailable = Window->Height;
 	while(RowsAvailable)
 	{

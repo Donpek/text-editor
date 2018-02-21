@@ -3,26 +3,28 @@
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
-						 i32 Amount)
+						 b32 ScrollUp, u32 Amount)
 {
 	editor_window *Windows = Memory->Windows;
 	editor_window CurrentWindow = Windows[0];
 
-	if(Amount < 0 && CurrentWindow.RenderOffset < Amount)
+	if(ScrollUp && Amount > CurrentWindow.RenderOffset)
 	{
 		return;
 	}
-	u32 LowerLimit = CurrentWindow.Height - CurrentWindow.Y;
-	if(CurrentWindow.RenderOffset < LowerLimit)
+	if(ScrollUp)
+	{
+			Windows[0].RenderOffset -= Amount;
+	}else
 	{
 		Windows[0].RenderOffset += Amount;
-		EditorFillWholeScreen(Buffer, 'X', EDITOR_RED_FG);
-		for(u32 WindowIndex = 0;
-				WindowIndex < Memory->WindowCount;
-				++WindowIndex)
-		{
-			EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
-		}
+	}
+	EditorFillWholeScreen(Buffer, ' ', 0);
+	for(u32 WindowIndex = 0;
+			WindowIndex < Memory->WindowCount;
+			++WindowIndex)
+	{
+		EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
 	}
 }
 
@@ -330,11 +332,11 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 							{
 								case 'A':
 								{
-									EditorScroll(Video, Memory, -1);
+									EditorScroll(Video, Memory, 1, 1);
 								} break;
 								case 'B':
 								{
-									EditorScroll(Video, Memory, 1);
+									EditorScroll(Video, Memory, 0, 1);
 								} break;
 								case 'C':
 								{
