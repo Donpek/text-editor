@@ -44,6 +44,8 @@
 #define SEQUENCE_YELLOW_BG "\x1b[43m", 5
 #define SEQUENCE_RESET_ATTRIBUTES "\x1b[0m", 4
 
+#define ESCAPE_CHARACTER 0x1B
+
 typedef struct
 {
 	u32 Character;

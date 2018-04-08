@@ -14,7 +14,7 @@ EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
 	}
 	if(ScrollUp)
 	{
-			Windows[0].RenderOffset -= Amount;
+		Windows[0].RenderOffset -= Amount;
 	}else
 	{
 		Windows[0].RenderOffset += Amount;
@@ -26,6 +26,7 @@ EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
 	{
 		EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
 	}
+	EditorInvertPixel(Memory->Cursor);
 }
 
 internal editor_pixel *
@@ -159,6 +160,111 @@ EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
 }
 
 internal void
+EditorMoveChoiceCursorUp(editor_memory *Memory)
+{
+	EditorInvertLineColors(
+		Memory->Choices[Memory->ChoiceIndex]
+	);
+	if(Memory->ChoiceIndex > 0)
+	{
+		--Memory->ChoiceIndex;
+	}else
+	{
+		Memory->ChoiceIndex = Memory->ChoiceCount - 1;
+	}
+	EditorInvertLineColors(
+		Memory->Choices[Memory->ChoiceIndex]
+	);
+}
+
+internal void
+EditorMoveChoiceCursorDown(editor_memory *Memory)
+{
+	EditorInvertLineColors(
+		Memory->Choices[Memory->ChoiceIndex]
+	);
+	if(Memory->ChoiceIndex < Memory->ChoiceCount - 1)
+	{
+		++Memory->ChoiceIndex;
+	}else
+	{
+		Memory->ChoiceIndex = 0;
+	}
+	EditorInvertLineColors(
+		Memory->Choices[Memory->ChoiceIndex]
+	);
+}
+
+internal void
+EditorRemovePixelFromScreen(editor_memory *Memory)
+{
+	EditorInvertPixel(Memory->Cursor);
+	--Memory->Cursor;
+	EditorWritePixel(Memory->Cursor, ' ', 0, 0);
+	EditorInvertPixel(Memory->Cursor);
+}
+
+internal void
+EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Video)
+{
+	editor_line InputtedLine = {0};
+	InputtedLine.Start = Memory->CursorBounds[0];
+	InputtedLine.Length = Memory->Cursor - Memory->CursorBounds[0];
+
+	u32 InputtedFilename[InputtedLine.Length];
+	EditorReadCharactersFromPixels(InputtedLine.Length,
+		InputtedLine.Start, InputtedFilename);
+
+	u8 ConvertedFilename[InputtedLine.Length * 4 + 1];
+	u8 *ConvertedPointer = (u8 *)ConvertedFilename;
+	for(u32 CharacterIndex = 0;
+		CharacterIndex < InputtedLine.Length;
+		++CharacterIndex)
+	{
+		u8 ByteCount = Str32GetCharacterSize((u8 *)(InputtedFilename +
+			CharacterIndex));
+		Str32ConvertCharacterIntoBytes(InputtedFilename[CharacterIndex],
+			ConvertedPointer);
+		ConvertedPointer += ByteCount;
+	}
+	*ConvertedPointer = 0;
+	ConvertedPointer = (u8 *)ConvertedFilename;
+
+	u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
+	i32 BytesRead = PlatformReadWholeFile((char *)ConvertedPointer,
+																				ReadOutputLocation);
+	if(BytesRead)
+	{
+		editor_file OpenedFile = {0};
+		OpenedFile.Bytes = ReadOutputLocation;
+		// NOTE(gunce): beware of overflow.
+		OpenedFile.ByteCount = (u32)BytesRead;
+		OpenedFile.Characters = (u32 *)(ReadOutputLocation + BytesRead);
+		OpenedFile.CharacterCount = Str32GetStringLength(OpenedFile.Bytes);
+		EditorReadCharactersFromBytes(OpenedFile.CharacterCount,
+			(void *)OpenedFile.Bytes, OpenedFile.Characters);
+		OpenedFile.Lines = (editor_line *)(OpenedFile.Characters +
+			OpenedFile.CharacterCount);
+		OpenedFile.LineCount = EditorReadLines(OpenedFile.CharacterCount,
+			OpenedFile.Characters, OpenedFile.Lines);
+		// TODO(gunce): set window size to be the size of the current tab.
+		editor_window *NewWindow = Memory->Windows + Memory->WindowCount;
+		NewWindow->Width = Video->Width-2;
+		NewWindow->Height = Video->Height-2;
+		NewWindow->X = 1;
+		NewWindow->Y = 1;
+		NewWindow->Contents = OpenedFile;
+		++Memory->WindowCount;
+		Memory->CursorOffset = Video->Width * NewWindow->Y + NewWindow->X;
+		EditorSetToEdit(Video, Memory);
+	}else
+	{
+		EditorSetToMessageBox(Video, Memory, (u32 *)"File not found.",
+			EDITOR_HOME_MENU);
+	}
+}
+
+internal void
 EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 									 editor_memory *Memory)
 {
@@ -171,7 +277,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 		{
 			case EDITOR_HOME_MENU:
 			{
-				if((Input.Character & 0xFF) == 0x1B)
+				if((Input.Character & 0xFF) == ESCAPE_CHARACTER)
 				{
 					Input.Character >>= BYTES(1);
 					if((Input.Character & 0xFF) == '[')
@@ -182,35 +288,11 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 						{
 							case 'A':
 							{
-								EditorInvertLineColors(
-									Memory->Choices[Memory->ChoiceIndex]
-								);
-								if(Memory->ChoiceIndex > 0)
-								{
-									--Memory->ChoiceIndex;
-								}else
-								{
-									Memory->ChoiceIndex = Memory->ChoiceCount - 1;
-								}
-								EditorInvertLineColors(
-									Memory->Choices[Memory->ChoiceIndex]
-								);
+								EditorMoveChoiceCursorUp(Memory);
 							} break;
 							case 'B':
 							{
-								EditorInvertLineColors(
-									Memory->Choices[Memory->ChoiceIndex]
-								);
-								if(Memory->ChoiceIndex < Memory->ChoiceCount - 1)
-								{
-									++Memory->ChoiceIndex;
-								}else
-								{
-									Memory->ChoiceIndex = 0;
-								}
-								EditorInvertLineColors(
-									Memory->Choices[Memory->ChoiceIndex]
-								);
+								EditorMoveChoiceCursorDown(Memory);
 							} break;
 						}
 					}
@@ -248,66 +330,10 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 					if(Input.Character == UNICODE_BACKSPACE &&
 						 Memory->Cursor > Memory->CursorBounds[0])
 					{
-						EditorInvertPixel(Memory->Cursor);
-						--Memory->Cursor;
-						EditorWritePixel(Memory->Cursor, ' ', 0, 0);
-						EditorInvertPixel(Memory->Cursor);
+						EditorRemovePixelFromScreen(Memory);
 					}else if(Input.Character == UNICODE_ENTER)
 					{
-						editor_line InputtedLine = {0};
-						InputtedLine.Start = Memory->CursorBounds[0];
-						InputtedLine.Length = Memory->Cursor - Memory->CursorBounds[0];
-
-						u32 InputtedFilename[InputtedLine.Length];
-						EditorReadCharactersFromPixels(InputtedLine.Length,
-							InputtedLine.Start, InputtedFilename);
-
-						u8 ConvertedFilename[InputtedLine.Length * 4 + 1];
-						u8 *ConvertedPointer = (u8 *)ConvertedFilename;
-						for(u32 CharacterIndex = 0;
-							CharacterIndex < InputtedLine.Length;
-							++CharacterIndex)
-						{
-							u8 ByteCount = Str32GetCharacterSize((u8 *)(InputtedFilename +
-								CharacterIndex));
-							Str32ConvertCharacterIntoBytes(InputtedFilename[CharacterIndex],
-								ConvertedPointer);
-							ConvertedPointer += ByteCount;
-						}
-						*ConvertedPointer = 0;
-						ConvertedPointer = (u8 *)ConvertedFilename;
-
-						u8 *ReadOutputLocation = (u8 *)Memory + KILOBYTES(1);
-						i32 BytesRead = PlatformReadWholeFile((char *)ConvertedPointer,
-																									ReadOutputLocation);
-						if(BytesRead)
-						{
-							editor_file OpenedFile = {0};
-							OpenedFile.Bytes = ReadOutputLocation;
-							// NOTE(gunce): beware of overflow.
-							OpenedFile.ByteCount = (u32)BytesRead;
-							OpenedFile.Characters = (u32 *)(ReadOutputLocation + BytesRead);
-							OpenedFile.CharacterCount = Str32GetStringLength(OpenedFile.Bytes);
-							EditorReadCharactersFromBytes(OpenedFile.CharacterCount,
-							 	(void *)OpenedFile.Bytes, OpenedFile.Characters);
-							OpenedFile.Lines = (editor_line *)(OpenedFile.Characters +
-								OpenedFile.CharacterCount);
-							OpenedFile.LineCount = EditorReadLines(OpenedFile.CharacterCount,
-								OpenedFile.Characters, OpenedFile.Lines);
-							Memory->CursorOffset = 0;
-							// TODO(gunce): set window size to be the size of the current tab.
-							Memory->Windows[Memory->WindowCount].Width = Video->Width-2;
-							Memory->Windows[Memory->WindowCount].Height = Video->Height-2;
-							Memory->Windows[Memory->WindowCount].X = 1;
-							Memory->Windows[Memory->WindowCount].Y = 1;
-							Memory->Windows[Memory->WindowCount].Contents = OpenedFile;
-							++Memory->WindowCount;
-							EditorSetToEdit(Video, Memory);
-						}else
-						{
-							EditorSetToMessageBox(Video, Memory, (u32 *)"File not found.",
-								EDITOR_HOME_MENU);
-						}
+						EditorTryOpeningAnExistingFile(Memory, Video);
 					}
 				}else if(Memory->Cursor < Memory->CursorBounds[1])
 				{
@@ -321,7 +347,7 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 				if(Str32IsControlCharacter(Input.Character))
 				{
 					// STUDY(gunce): whether this logic is platform-dependent.
-					if((Input.Character & 0xFF) == 0x1B)
+					if((Input.Character & 0xFF) == ESCAPE_CHARACTER)
 					{
 						Input.Character >>= BYTES(1);
 						if((Input.Character & 0xFF) == '[')
