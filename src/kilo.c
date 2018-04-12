@@ -1,23 +1,27 @@
 #include "str.c"
 #include "drawing_functions.c"
+// COMMIT AFTER FINISHING: Cursor movement while in editing mode.
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
-						 b32 ScrollUp, u32 Amount)
+						 b32 ScrollUp)
 {
 	editor_window *Windows = Memory->Windows;
-	editor_window CurrentWindow = Windows[0];
 
-	if(ScrollUp && Amount > CurrentWindow.RenderOffset)
-	{
-		return;
-	}
 	if(ScrollUp)
 	{
-		Windows[0].RenderOffset -= Amount;
+		if(!Windows[0].RenderOffset)
+		{
+			return;
+		}
+		Windows[0].RenderOffset -= 1;
 	}else
 	{
-		Windows[0].RenderOffset += Amount;
+		if(Windows[0].Contents.LineCount < Windows[0].RenderOffset + Windows[0].CursorY)
+		{
+			return;
+		}
+		Windows[0].RenderOffset += 1;
 	}
 	EditorFillWholeScreen(Buffer, ' ', 0);
 	for(u32 WindowIndex = 0;
@@ -26,14 +30,20 @@ EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
 	{
 		EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
 	}
-	EditorInvertPixel(Memory->Cursor);
 }
 
 internal editor_pixel *
-EditorGetPixelAddress(editor_screen_buffer *Buffer, u32 X, u32 Y)
+EditorGetPixelAddress(editor_screen_buffer *Buffer, editor_memory *Memory,
+											u32 X, u32 Y)
 {
-	editor_pixel *Result = Buffer->Memory;
+	editor_pixel *ScreenStart = (editor_pixel *)Buffer->Memory;
+	editor_pixel *Result = ScreenStart + Memory->CursorOffset;
 	Result += X + (Y * Buffer->Width);
+	if(Result < ScreenStart ||
+		 Result > ScreenStart + (Buffer->Width * Buffer->Height))
+	{
+		Result = 0;
+	}
 	return(Result);
 }
 
@@ -43,7 +53,7 @@ EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 	Memory->WriteBits = EDITOR_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
 	EditorFillRow(Video, Video->Height/2, 'T', EDITOR_RED_FG);
-	Memory->Cursor = EditorGetPixelAddress(Video, 4, (Video->Height/2) - 1);
+	Memory->Cursor = EditorGetPixelAddress(Video, Memory, 4, (Video->Height/2) - 1);
 	Memory->CursorBounds[0] = Memory->Cursor;
 	Memory->CursorBounds[1] = Memory->Cursor + Video->Width - 8;
 	EditorInvertPixel(Memory->Cursor);
@@ -207,6 +217,7 @@ EditorRemovePixelFromScreen(editor_memory *Memory)
 internal void
 EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Video)
 {
+	// TODO(Donpek) Check for WindowCount == EDITOR_MAX_WINDOWS
 	editor_line InputtedLine = {0};
 	InputtedLine.Start = Memory->CursorBounds[0];
 	InputtedLine.Length = Memory->Cursor - Memory->CursorBounds[0];
@@ -265,12 +276,119 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 }
 
 internal void
+EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
+								 i32 MoveDirection)
+{
+	editor_window *CurrentWin = Memory->Windows + Memory->WindowCount - 1;
+	u32 *X = &CurrentWin->CursorX; u32 Width = CurrentWin->Width;
+	u32 *Y = &CurrentWin->CursorY; u32 Height = CurrentWin->Height;
+	editor_pixel **Cursor = &Memory->Cursor;
+	EditorInvertPixel(*Cursor);
+	switch(MoveDirection)
+	{
+		case EDITOR_MOVE_UP: {
+			if(*Y > 0)
+			{
+				--(*Y);
+				*Cursor = *Cursor - Video->Width;
+			}else
+			{
+				EditorScroll(Video, Memory, EDITOR_SCROLL_UP);
+			}
+			if(((*Cursor)->Character) == (u32)' ')
+			{
+				u32 SavedX = *X;
+				*Cursor = *Cursor - (*X) + Width - 1;
+				*X = Width - 1;
+				do
+				{
+					--(*X);
+					--(*Cursor);
+				}while(((*Cursor)->Character) == (u32)' ' && *X);
+				if(*X > SavedX)
+				{
+					*Cursor = (*Cursor) + SavedX - (*X);
+					*X = SavedX;
+				}
+			}
+		} break;
+		case EDITOR_MOVE_DOWN: {
+			if(*Y < Height - 1)
+			{
+				++(*Y);
+				*Cursor = *Cursor + Video->Width;
+			}else
+			{
+				EditorScroll(Video, Memory, EDITOR_SCROLL_DOWN);
+			}
+			if(((*Cursor)->Character) == (u32)' ')
+			{
+				u32 SavedX = *X;
+				*Cursor = *Cursor - (*X) + Width - 1;
+				*X = Width - 1;
+				do
+				{
+					--(*X);
+					--(*Cursor);
+				}while(((*Cursor)->Character) == (u32)' ' && *X);
+				if(*X > SavedX)
+				{
+					*Cursor = (*Cursor) + SavedX - (*X);
+					*X = SavedX;
+				}
+			}
+		} break;
+		case EDITOR_MOVE_LEFT: {
+			if(*X > 0)
+			{
+				--(*X);
+				--(*Cursor);
+			}else if(*Y)
+			{
+				--(*Y);
+				*Cursor = *Cursor - Video->Width + Width - 1;
+				*X = Width - 1;
+				if((*Cursor)->Character == (u32)' ')
+				{
+					do
+					{
+						--(*X);
+						--(*Cursor);
+					}while((*Cursor)->Character == (u32)' ' && *X);
+				}
+			}
+		} break;
+		case EDITOR_MOVE_RIGHT: {
+			u32 LineEndX = Width - 1;
+			editor_pixel *LineEnd =	(editor_pixel *)
+				Video->Memory + Memory->CursorOffset + LineEndX + *Y * Video->Width;
+			do
+			{
+				--LineEnd;
+				--LineEndX;
+			}while(LineEnd->Character == (u32)' ' && LineEndX);
+			if(*X < LineEndX)
+			{
+				++(*X);
+				++(*Cursor);
+			}else
+			{
+				++(*Y);
+				*Cursor = *Cursor + Video->Width - *X;
+				*X = 0;
+			}
+		} break;
+	}
+	EditorInvertPixel(*Cursor);
+}
+
+internal void
 EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 									 editor_memory *Memory)
 {
 	if(Input.Character == CTRL_PLUS('q'))
 	{
-		PlatformQuit();
+		PlatformQuit("Control Q");
 	}else
 	{
 		switch(Memory->CurrentMode)
@@ -358,17 +476,19 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 							{
 								case 'A':
 								{
-									EditorScroll(Video, Memory, 1, 1);
+									EditorMoveCursor(Memory, Video, EDITOR_MOVE_UP);
 								} break;
 								case 'B':
 								{
-									EditorScroll(Video, Memory, 0, 1);
+									EditorMoveCursor(Memory, Video, EDITOR_MOVE_DOWN);
 								} break;
 								case 'C':
 								{
+									EditorMoveCursor(Memory, Video, EDITOR_MOVE_RIGHT);
 								} break;
 								case 'D':
 								{
+									EditorMoveCursor(Memory, Video, EDITOR_MOVE_LEFT);
 								} break;
 							}
 						}

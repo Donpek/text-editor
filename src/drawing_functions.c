@@ -6,7 +6,7 @@ EditorWritePixel(editor_pixel *Destination, u32 Character,
 	{
 		Character = BitManipReverseBytes(Character);
 	}
-	if(!Str32IsControlCharacter(Character))
+	if(!Character || !Str32IsControlCharacter(Character))
 	{
 		Destination->Character = Character;
 	}

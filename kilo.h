@@ -47,6 +47,14 @@ typedef uint32_t u32;
 #define EDITOR_BYTE 0
 #define EDITOR_PIXEL 1
 
+#define EDITOR_MOVE_UP 0
+#define EDITOR_MOVE_DOWN 1
+#define EDITOR_MOVE_LEFT 2
+#define EDITOR_MOVE_RIGHT 3
+
+#define EDITOR_SCROLL_UP 1
+#define EDITOR_SCROLL_DOWN 0
+
 typedef struct
 {
 	void *Memory;
@@ -90,6 +98,7 @@ typedef struct
 	u32 Width;
 	u32 Height;
 	u32 RenderOffset;
+	u32 CursorX; u32 CursorY;
 	editor_file Contents;
 } editor_window;
 
@@ -102,6 +111,7 @@ typedef struct
 	u32 CursorOffset;
 	u32 WriteBits;
 	u32 WindowCount;
+	u32 WindowIndex;
 	u32 ChoiceCount;
 	u8 ChoiceIndex;
 	u8 CurrentMode;
@@ -109,7 +119,7 @@ typedef struct
 } editor_memory;
 
 // NOTE(gunce): services that the platform provides to the application.
-internal void PlatformQuit(void);
+internal void PlatformQuit(char *QuitMessage);
 internal i32 PlatformReadWholeFile(const char *Path, void *Output);
 // NOTE(gunce): services that the application provides to the platform.
 // EditorUpdateScreen
