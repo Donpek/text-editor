@@ -36,9 +36,9 @@ EditorGetPixelAddress(editor_screen_buffer *Buffer,	u32 X, u32 Y)
 internal void
 EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 {
-	Memory->WriteBits = EDITOR_GREEN_FG;
+	Memory->WriteBits = PIXEL_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
-	EditorFillRow(Video, Video->Height/2, 'T', EDITOR_RED_FG);
+	EditorFillRow(Video, Video->Height/2, 'T', PIXEL_RED_FG);
 	Memory->Cursor = EditorGetPixelAddress(Video, 4, (Video->Height/2) - 1);
 	Memory->CursorBounds[0] = Memory->Cursor;
 	Memory->CursorBounds[1] = Memory->Cursor + Video->Width - 8;
@@ -55,8 +55,8 @@ EditorSetToMessageBox(editor_screen_buffer *Buffer, editor_memory *Memory,
 	u32 X = (Buffer->Width - Width) / 2;
 	u32 Y = (Buffer->Height) / 2;
 	EditorFillRectangle(Buffer, X, Y - 2, Width + 4, 5, '#',
-		EDITOR_GREEN_FG, ' ',	0);
-	EditorWriteLine(Buffer, X + 2, Y, Message, EDITOR_RED_FG, 0, 0);
+		PIXEL_GREEN_FG, ' ',	0);
+	EditorWriteLine(Buffer, X + 2, Y, Message, PIXEL_RED_FG, 0, 0);
 	Memory->CurrentMode = EDITOR_MESSAGE_BOX;
 	Memory->SavedMode = ModeToSwitchToAfterConfirmation;
 }
@@ -65,7 +65,7 @@ internal void
 EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
-	Memory->WriteBits = EDITOR_WHITE_FG;
+	Memory->WriteBits = PIXEL_WHITE_FG;
 	EditorFillWithContent(Video, Memory);
 	Memory->Cursor = (editor_pixel *)Video->Memory;
 	EditorInvertPixel(Memory->Cursor);
@@ -77,7 +77,7 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
 	EditorFillPrettyBorders(Video);
-	u32 Green = EDITOR_GREEN_FG;
+	u32 Green = PIXEL_GREEN_FG;
 	Memory->Choices[0] = EditorWriteLine(
 		Video, Video->Width/2, Video->Height/2 - 2,
 		(u32 *)"Open an exƵisting file.", EditorInvertColors(Green),

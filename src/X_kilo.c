@@ -21,6 +21,18 @@
 #include "../kilo.h"
 #include "bitmanip.c"
 
+// NOTE(gunce): pixel info bits.
+#define PIXEL_NEED_TO_DRAW 1
+#define PIXEL_RED_FG 2
+#define PIXEL_GREEN_FG 4
+#define PIXEL_BLUE_FG 8
+#define PIXEL_WHITE_FG PIXEL_RED_FG | PIXEL_GREEN_FG | PIXEL_BLUE_FG
+#define PIXEL_RED_BG 16
+#define PIXEL_GREEN_BG 32
+#define PIXEL_BLUE_BG 64
+#define PIXEL_WHITE_BG PIXEL_RED_BG | PIXEL_GREEN_BG | PIXEL_BLUE_BG
+#define PIXEL_COLOR_MASK 0x7E
+
 #define SEQUENCE_NEWLINE "\r\n", 2
 #define SEQUENCE_CLEARSCREEN "\x1b[2J", 4
 #define SEQUENCE_RESETCURSOR "\x1b[H", 3
@@ -151,39 +163,39 @@ XEnableRawMode(void)
 internal void
 XSetColor(u32 BitInfo)
 {
-	u32 Foreground = BitInfo & (EDITOR_RED_FG | EDITOR_GREEN_FG | EDITOR_BLUE_FG);
-	u32 Background = BitInfo & (EDITOR_RED_BG | EDITOR_GREEN_BG | EDITOR_BLUE_BG);
+	u32 Foreground = BitInfo & (PIXEL_RED_FG | PIXEL_GREEN_FG | PIXEL_BLUE_FG);
+	u32 Background = BitInfo & (PIXEL_RED_BG | PIXEL_GREEN_BG | PIXEL_BLUE_BG);
 	switch(Foreground)
 	{
 		case 0:
 		{
 			XWriteBytes(SEQUENCE_BLACK_FG);
 		}break;
-		case EDITOR_RED_FG | EDITOR_GREEN_FG | EDITOR_BLUE_FG:
+		case PIXEL_RED_FG | PIXEL_GREEN_FG | PIXEL_BLUE_FG:
 		{
 			XWriteBytes(SEQUENCE_WHITE_FG);
 		}break;
-		case EDITOR_RED_FG:
+		case PIXEL_RED_FG:
 		{
 			XWriteBytes(SEQUENCE_RED_FG);
 		}break;
-		case EDITOR_GREEN_FG:
+		case PIXEL_GREEN_FG:
 		{
 			XWriteBytes(SEQUENCE_GREEN_FG);
 		}break;
-		case EDITOR_BLUE_FG:
+		case PIXEL_BLUE_FG:
 		{
 			XWriteBytes(SEQUENCE_BLUE_FG);
 		}break;
-		case EDITOR_RED_FG | EDITOR_GREEN_FG:
+		case PIXEL_RED_FG | PIXEL_GREEN_FG:
 		{
 			XWriteBytes(SEQUENCE_YELLOW_FG);
 		}break;
-		case EDITOR_RED_FG | EDITOR_BLUE_FG:
+		case PIXEL_RED_FG | PIXEL_BLUE_FG:
 		{
 			XWriteBytes(SEQUENCE_MAGENTA_FG);
 		}break;
-		case EDITOR_BLUE_FG | EDITOR_GREEN_FG:
+		case PIXEL_BLUE_FG | PIXEL_GREEN_FG:
 		{
 			XWriteBytes(SEQUENCE_CYAN_FG);
 		}break;
@@ -200,31 +212,31 @@ XSetColor(u32 BitInfo)
 		{
 			XWriteBytes(SEQUENCE_BLACK_BG);
 		}break;
-		case EDITOR_RED_BG | EDITOR_GREEN_BG | EDITOR_BLUE_BG:
+		case PIXEL_RED_BG | PIXEL_GREEN_BG | PIXEL_BLUE_BG:
 		{
 			XWriteBytes(SEQUENCE_WHITE_BG);
 		}break;
-		case EDITOR_RED_BG:
+		case PIXEL_RED_BG:
 		{
 			XWriteBytes(SEQUENCE_RED_BG);
 		}break;
-		case EDITOR_GREEN_BG:
+		case PIXEL_GREEN_BG:
 		{
 			XWriteBytes(SEQUENCE_GREEN_BG);
 		}break;
-		case EDITOR_BLUE_BG:
+		case PIXEL_BLUE_BG:
 		{
 			XWriteBytes(SEQUENCE_BLUE_BG);
 		}break;
-		case EDITOR_RED_BG | EDITOR_GREEN_BG:
+		case PIXEL_RED_BG | PIXEL_GREEN_BG:
 		{
 			XWriteBytes(SEQUENCE_YELLOW_BG);
 		}break;
-		case EDITOR_RED_BG | EDITOR_BLUE_BG:
+		case PIXEL_RED_BG | PIXEL_BLUE_BG:
 		{
 			XWriteBytes(SEQUENCE_MAGENTA_BG);
 		}break;
-		case EDITOR_BLUE_BG | EDITOR_GREEN_BG:
+		case PIXEL_BLUE_BG | PIXEL_GREEN_BG:
 		{
 			XWriteBytes(SEQUENCE_CYAN_BG);
 		}break;
@@ -253,7 +265,7 @@ XUpdateScreen(x_screen_buffer Buffer)
 		    ColumnIndex <= Buffer.Width;
 		    ++ColumnIndex, ++PixelPointer)
 		{
-			if(PixelPointer->BitInfo & EDITOR_NEED_TO_DRAW)
+			if(PixelPointer->BitInfo & PIXEL_NEED_TO_DRAW)
 			{
 				Sequence[0] = 0x1B; Sequence[1] = '[';
 				SequenceLength = 2;
@@ -267,7 +279,7 @@ XUpdateScreen(x_screen_buffer Buffer)
 				XWriteBytes(Sequence, SequenceLength);
 				XSetColor(PixelPointer->BitInfo);
 				XWriteBytes(&PixelPointer->Character, sizeof(PixelPointer->Character));
-				PixelPointer->BitInfo ^= EDITOR_NEED_TO_DRAW;
+				PixelPointer->BitInfo ^= PIXEL_NEED_TO_DRAW;
 			}
 		}
 	}

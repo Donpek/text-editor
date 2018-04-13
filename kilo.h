@@ -20,19 +20,6 @@ typedef uint32_t u32;
 #define EDITOR_INPUT_FILENAME 2
 #define EDITOR_MESSAGE_BOX 3
 
-// NOTE(gunce): pixel info bits.
-#define EDITOR_NEED_TO_DRAW 1
-#define EDITOR_RED_FG 2
-#define EDITOR_GREEN_FG 4
-#define EDITOR_BLUE_FG 8
-#define EDITOR_WHITE_FG EDITOR_RED_FG | EDITOR_GREEN_FG | EDITOR_BLUE_FG
-#define EDITOR_RED_BG 16
-#define EDITOR_GREEN_BG 32
-#define EDITOR_BLUE_BG 64
-#define EDITOR_WHITE_BG EDITOR_RED_BG | EDITOR_GREEN_BG | EDITOR_BLUE_BG
-
-#define EDITOR_COLOR_MASK 0x7E
-
 // NOTE(gunce): line alignment types
 #define EDITOR_ALIGN_LEFT 0
 #define EDITOR_ALIGN_CENTER 1

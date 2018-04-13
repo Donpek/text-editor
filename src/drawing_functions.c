@@ -10,7 +10,7 @@ EditorWritePixel(editor_pixel *Destination, u32 Character,
 	{
 		Destination->Character = Character;
 	}
-	Destination->BitInfo = BitInfo | EDITOR_NEED_TO_DRAW;
+	Destination->BitInfo = BitInfo | PIXEL_NEED_TO_DRAW;
 }
 
 internal void
@@ -156,7 +156,7 @@ EditorWriteLine(editor_screen_buffer *Buffer, u32 X,
 internal u32
 EditorInvertColors(u32 BitInfo)
 {
-	u32 Result = EDITOR_COLOR_MASK & (~BitInfo);
+	u32 Result = PIXEL_COLOR_MASK & (~BitInfo);
 	return(Result);
 }
 
@@ -185,8 +185,8 @@ EditorInvertLineColors(editor_line Line)
 internal void
 EditorFillPrettyBorders(editor_screen_buffer *Buffer)
 {
-	u32 Red = EDITOR_RED_FG;
-	u32 Yellow = EDITOR_RED_FG | EDITOR_GREEN_FG;
+	u32 Red = PIXEL_RED_FG;
+	u32 Yellow = PIXEL_RED_FG | PIXEL_GREEN_FG;
 	EditorFillColumn(Buffer, 0, '+', Yellow);
 	EditorFillColumn(Buffer, 1, '=', Yellow);
 	EditorFillColumn(Buffer, 2, '|', Yellow);
