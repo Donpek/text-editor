@@ -13,7 +13,6 @@ typedef int32_t i32;
 typedef uint32_t u32;
 
 #define EDITOR_MAX_CHOICES 3
-#define EDITOR_MAX_WINDOWS 6
 
 // NOTE(gunce): modes of interaction
 #define EDITOR_HOME_MENU 0
@@ -58,8 +57,8 @@ typedef uint32_t u32;
 typedef struct
 {
 	void *Memory;
-	u32 Width;
-	u32 Height;
+	u32 Width, Height;
+	u32 CursorX, CursorY;
 } editor_screen_buffer;
 
 typedef struct
@@ -67,6 +66,12 @@ typedef struct
 	u32 Character;
 	u32 BitInfo;
 } editor_pixel;
+
+typedef struct
+{
+	u32 PrevIndex, NextIndex;
+	u32 Value;
+} editor_char;
 
 typedef struct
 {
@@ -94,24 +99,12 @@ typedef struct
 
 typedef struct
 {
-	u32 X; u32 Y;
-	u32 Width;
-	u32 Height;
-	u32 RenderOffset;
-	u32 CursorX; u32 CursorY;
-	editor_file Contents;
-} editor_window;
-
-typedef struct
-{
-	editor_window Windows[EDITOR_MAX_WINDOWS];
 	editor_line Choices[EDITOR_MAX_CHOICES];
 	editor_pixel *Cursor;
 	editor_pixel *CursorBounds[2];
-	u32 CursorOffset;
+	editor_file File;
+	u32 RenderOffset;
 	u32 WriteBits;
-	u32 WindowCount;
-	u32 WindowIndex;
 	u32 ChoiceCount;
 	u8 ChoiceIndex;
 	u8 CurrentMode;

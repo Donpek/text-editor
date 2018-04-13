@@ -1,49 +1,35 @@
 #include "str.c"
 #include "drawing_functions.c"
-// COMMIT AFTER FINISHING: Cursor movement while in editing mode.
+// COMMIT AFTER FINISHING: Inserting characters.
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
 						 b32 ScrollUp)
 {
-	editor_window *Windows = Memory->Windows;
-
 	if(ScrollUp)
 	{
-		if(!Windows[0].RenderOffset)
+		if(!Memory->RenderOffset)
 		{
 			return;
 		}
-		Windows[0].RenderOffset -= 1;
+		Memory->RenderOffset -= 1;
 	}else
 	{
-		if(Windows[0].Contents.LineCount < Windows[0].RenderOffset + Windows[0].CursorY)
+		if(Memory->File.LineCount < Memory->RenderOffset + Buffer->CursorY)
 		{
 			return;
 		}
-		Windows[0].RenderOffset += 1;
+		Memory->RenderOffset += 1;
 	}
 	EditorFillWholeScreen(Buffer, ' ', 0);
-	for(u32 WindowIndex = 0;
-			WindowIndex < Memory->WindowCount;
-			++WindowIndex)
-	{
-		EditorFillWindow(Buffer, Windows + WindowIndex, Memory);
-	}
+	EditorFillWithContent(Buffer, Memory);
 }
 
 internal editor_pixel *
-EditorGetPixelAddress(editor_screen_buffer *Buffer, editor_memory *Memory,
-											u32 X, u32 Y)
+EditorGetPixelAddress(editor_screen_buffer *Buffer,	u32 X, u32 Y)
 {
-	editor_pixel *ScreenStart = (editor_pixel *)Buffer->Memory;
-	editor_pixel *Result = ScreenStart + Memory->CursorOffset;
+	editor_pixel *Result = (editor_pixel *)Buffer->Memory;
 	Result += X + (Y * Buffer->Width);
-	if(Result < ScreenStart ||
-		 Result > ScreenStart + (Buffer->Width * Buffer->Height))
-	{
-		Result = 0;
-	}
 	return(Result);
 }
 
@@ -53,7 +39,7 @@ EditorSetToOpenFile(editor_screen_buffer *Video, editor_memory *Memory)
 	Memory->WriteBits = EDITOR_GREEN_FG;
 	EditorFillWholeScreen(Video, ' ', 0);
 	EditorFillRow(Video, Video->Height/2, 'T', EDITOR_RED_FG);
-	Memory->Cursor = EditorGetPixelAddress(Video, Memory, 4, (Video->Height/2) - 1);
+	Memory->Cursor = EditorGetPixelAddress(Video, 4, (Video->Height/2) - 1);
 	Memory->CursorBounds[0] = Memory->Cursor;
 	Memory->CursorBounds[1] = Memory->Cursor + Video->Width - 8;
 	EditorInvertPixel(Memory->Cursor);
@@ -80,13 +66,8 @@ EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
 	Memory->WriteBits = EDITOR_WHITE_FG;
-	for(u32 WindowIndex = 0;
-			WindowIndex < Memory->WindowCount;
-			++WindowIndex)
-	{
-		EditorFillWindow(Video, &Memory->Windows[WindowIndex], Memory);
-	}
-	Memory->Cursor = (editor_pixel *)Video->Memory + Memory->CursorOffset;
+	EditorFillWithContent(Video, Memory);
+	Memory->Cursor = (editor_pixel *)Video->Memory;
 	EditorInvertPixel(Memory->Cursor);
 	Memory->CurrentMode = EDITOR_EDITING;
 }
@@ -217,7 +198,6 @@ EditorRemovePixelFromScreen(editor_memory *Memory)
 internal void
 EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Video)
 {
-	// TODO(Donpek) Check for WindowCount == EDITOR_MAX_WINDOWS
 	editor_line InputtedLine = {0};
 	InputtedLine.Start = Memory->CursorBounds[0];
 	InputtedLine.Length = Memory->Cursor - Memory->CursorBounds[0];
@@ -246,27 +226,17 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 																				ReadOutputLocation);
 	if(BytesRead)
 	{
-		editor_file OpenedFile = {0};
-		OpenedFile.Bytes = ReadOutputLocation;
-		// NOTE(gunce): beware of overflow.
-		OpenedFile.ByteCount = (u32)BytesRead;
-		OpenedFile.Characters = (u32 *)(ReadOutputLocation + BytesRead);
-		OpenedFile.CharacterCount = Str32GetStringLength(OpenedFile.Bytes);
-		EditorReadCharactersFromBytes(OpenedFile.CharacterCount,
-			(void *)OpenedFile.Bytes, OpenedFile.Characters);
-		OpenedFile.Lines = (editor_line *)(OpenedFile.Characters +
-			OpenedFile.CharacterCount);
-		OpenedFile.LineCount = EditorReadLines(OpenedFile.CharacterCount,
-			OpenedFile.Characters, OpenedFile.Lines);
-		// TODO(gunce): set window size to be the size of the current tab.
-		editor_window *NewWindow = Memory->Windows + Memory->WindowCount;
-		NewWindow->Width = Video->Width-2;
-		NewWindow->Height = Video->Height-2;
-		NewWindow->X = 1;
-		NewWindow->Y = 1;
-		NewWindow->Contents = OpenedFile;
-		++Memory->WindowCount;
-		Memory->CursorOffset = Video->Width * NewWindow->Y + NewWindow->X;
+		Memory->File.Bytes = ReadOutputLocation;
+		Memory->File.ByteCount = (u32)BytesRead;
+		// TODO (Donatas) Do the conversion to arraylist here.
+		Memory->File.Characters = (u32 *)(ReadOutputLocation + BytesRead);
+		Memory->File.CharacterCount = Str32GetStringLength(Memory->File.Bytes);
+		EditorReadCharactersFromBytes(Memory->File.CharacterCount,
+			(void *)Memory->File.Bytes, Memory->File.Characters);
+		Memory->File.Lines = (editor_line *)(Memory->File.Characters +
+			Memory->File.CharacterCount);
+		Memory->File.LineCount = EditorReadLines(Memory->File.CharacterCount,
+			Memory->File.Characters, Memory->File.Lines);
 		EditorSetToEdit(Video, Memory);
 	}else
 	{
@@ -279,107 +249,107 @@ internal void
 EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 								 i32 MoveDirection)
 {
-	editor_window *CurrentWin = Memory->Windows + Memory->WindowCount - 1;
-	u32 *X = &CurrentWin->CursorX; u32 Width = CurrentWin->Width;
-	u32 *Y = &CurrentWin->CursorY; u32 Height = CurrentWin->Height;
-	editor_pixel **Cursor = &Memory->Cursor;
-	EditorInvertPixel(*Cursor);
+	u32 X = Video->CursorX; u32 Width = Video->Width;
+	u32 Y = Video->CursorY; u32 Height = Video->Height;
+	editor_pixel *Cursor = Memory->Cursor;
+	EditorInvertPixel(Cursor);
 	switch(MoveDirection)
 	{
 		case EDITOR_MOVE_UP: {
-			if(*Y > 0)
+			if(Y > 0)
 			{
-				--(*Y);
-				*Cursor = *Cursor - Video->Width;
+				--(Y);
+				Cursor = Cursor - Width;
 			}else
 			{
 				EditorScroll(Video, Memory, EDITOR_SCROLL_UP);
 			}
-			if(((*Cursor)->Character) == (u32)' ')
+			if(((Cursor)->Character) == (u32)' ')
 			{
-				u32 SavedX = *X;
-				*Cursor = *Cursor - (*X) + Width - 1;
-				*X = Width - 1;
+				u32 SavedX = X;
+				Cursor = Cursor - (X) + Width - 1;
+				X = Width - 1;
 				do
 				{
-					--(*X);
-					--(*Cursor);
-				}while(((*Cursor)->Character) == (u32)' ' && *X);
-				if(*X > SavedX)
+					--(X);
+					--(Cursor);
+				}while(((Cursor)->Character) == (u32)' ' && X);
+				if(X > SavedX)
 				{
-					*Cursor = (*Cursor) + SavedX - (*X);
-					*X = SavedX;
+					Cursor = (Cursor) + SavedX - (X);
+					X = SavedX;
 				}
 			}
 		} break;
 		case EDITOR_MOVE_DOWN: {
-			if(*Y < Height - 1)
+			if(Y < Height - 1)
 			{
-				++(*Y);
-				*Cursor = *Cursor + Video->Width;
+				++(Y);
+				Cursor = Cursor + Width;
 			}else
 			{
 				EditorScroll(Video, Memory, EDITOR_SCROLL_DOWN);
 			}
-			if(((*Cursor)->Character) == (u32)' ')
+			if(((Cursor)->Character) == (u32)' ')
 			{
-				u32 SavedX = *X;
-				*Cursor = *Cursor - (*X) + Width - 1;
-				*X = Width - 1;
+				u32 SavedX = X;
+				Cursor = Cursor - (X) + Width - 1;
+				X = Width - 1;
 				do
 				{
-					--(*X);
-					--(*Cursor);
-				}while(((*Cursor)->Character) == (u32)' ' && *X);
-				if(*X > SavedX)
+					--(X);
+					--(Cursor);
+				}while(((Cursor)->Character) == (u32)' ' && X);
+				if(X > SavedX)
 				{
-					*Cursor = (*Cursor) + SavedX - (*X);
-					*X = SavedX;
+					Cursor = (Cursor) + SavedX - (X);
+					X = SavedX;
 				}
 			}
 		} break;
 		case EDITOR_MOVE_LEFT: {
-			if(*X > 0)
+			if(X > 0)
 			{
-				--(*X);
-				--(*Cursor);
-			}else if(*Y)
+				--(X);
+				--(Cursor);
+			}else if(Y)
 			{
-				--(*Y);
-				*Cursor = *Cursor - Video->Width + Width - 1;
-				*X = Width - 1;
-				if((*Cursor)->Character == (u32)' ')
+				--(Y);
+				Cursor = Cursor - 1;
+				X = Width - 1;
+				if((Cursor)->Character == (u32)' ')
 				{
 					do
 					{
-						--(*X);
-						--(*Cursor);
-					}while((*Cursor)->Character == (u32)' ' && *X);
+						--(X);
+						--(Cursor);
+					}while((Cursor)->Character == (u32)' ' && X);
 				}
 			}
 		} break;
 		case EDITOR_MOVE_RIGHT: {
 			u32 LineEndX = Width - 1;
-			editor_pixel *LineEnd =	(editor_pixel *)
-				Video->Memory + Memory->CursorOffset + LineEndX + *Y * Video->Width;
+			editor_pixel *LineEnd =	(editor_pixel *)Video->Memory + LineEndX + Y * Width;
 			do
 			{
 				--LineEnd;
 				--LineEndX;
 			}while(LineEnd->Character == (u32)' ' && LineEndX);
-			if(*X < LineEndX)
+			if(X < LineEndX)
 			{
-				++(*X);
-				++(*Cursor);
+				++(X);
+				++(Cursor);
 			}else
 			{
-				++(*Y);
-				*Cursor = *Cursor + Video->Width - *X;
-				*X = 0;
+				++(Y);
+				Cursor = Cursor + Width - X;
+				X = 0;
 			}
 		} break;
 	}
-	EditorInvertPixel(*Cursor);
+	EditorInvertPixel(Cursor);
+	Memory->Cursor = Cursor;
+	Video->CursorX = X; Video->CursorY = Y;
 }
 
 internal void

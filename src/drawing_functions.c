@@ -198,22 +198,16 @@ EditorFillPrettyBorders(editor_screen_buffer *Buffer)
 }
 
 internal void
-EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
-								 editor_memory *Memory)
+EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 {
-#ifdef DEBUG
-	ASSERT(Window->Width <= Buffer->Width);
-	ASSERT(Window->Height <= Buffer->Height);
-#endif
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
-	Cursor += Window->X + (Window->Y * Buffer->Width);
-	editor_line Line = *(Window->Contents.Lines + Window->RenderOffset);
-	u32 LineIndex = Window->RenderOffset;
+	editor_line Line = *(Memory->File.Lines + Memory->RenderOffset);
+	u32 LineIndex = Memory->RenderOffset;
 	u32 *Character = (u32 *)(Line.Start);
-	u32 RowsAvailable = Window->Height;
+	u32 RowsAvailable = Buffer->Height;
 	while(RowsAvailable)
 	{
-		if(Window->Width >= Line.Length)
+		if(Buffer->Width >= Line.Length)
 		{
 			for(u32 ColumnIndex = 0;
 				ColumnIndex < Line.Length;
@@ -225,25 +219,24 @@ EditorFillWindow(editor_screen_buffer *Buffer, editor_window *Window,
 			}
 			Cursor += Buffer->Width - Line.Length;
 			++LineIndex;
-			if(LineIndex != Window->Contents.LineCount)
+			if(LineIndex != Memory->File.LineCount)
 			{
-				Line = *(Window->Contents.Lines + LineIndex);
-			}else // window can hold more lines than the file has to give.
+				Line = *(Memory->File.Lines + LineIndex);
+			}else // screen can hold more lines than the file has to give.
 			{
 				return;
 			}
-		}else // line is longer than window is wide.
+		}else // line is longer than screen is wide.
 		{
 			for(u32 ColumnIndex = 0;
-				ColumnIndex < Window->Width;
+				ColumnIndex < Buffer->Width;
 				++ColumnIndex)
 			{
 				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
 				++Cursor;
 				++Character;
 			}
-			Cursor += Buffer->Width - Window->Width;
-			Line.Length -= Window->Width;
+			Line.Length -= Buffer->Width;
 		}
 		--RowsAvailable;
 	}
