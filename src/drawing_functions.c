@@ -203,7 +203,7 @@ EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
 	editor_line Line = *(Memory->File.Lines + Memory->RenderOffset);
 	u32 LineIndex = Memory->RenderOffset;
-	u32 *Character = (u32 *)(Line.Start);
+	editor_char *Character = (editor_char *)(Line.Start);
 	u32 RowsAvailable = Buffer->Height;
 	while(RowsAvailable)
 	{
@@ -213,7 +213,7 @@ EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 				ColumnIndex < Line.Length;
 				++ColumnIndex)
 			{
-				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
+				EditorWritePixel(Cursor, Character->Value, Memory->WriteBits, 0);
 				++Cursor;
 				++Character;
 			}
@@ -232,7 +232,7 @@ EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 				ColumnIndex < Buffer->Width;
 				++ColumnIndex)
 			{
-				EditorWritePixel(Cursor, *Character, Memory->WriteBits, 0);
+				EditorWritePixel(Cursor, Character->Value, Memory->WriteBits, 0);
 				++Cursor;
 				++Character;
 			}

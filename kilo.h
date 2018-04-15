@@ -77,10 +77,9 @@ typedef struct
 {
 	editor_line *Lines;
 	u32 LineCount;
-	u32 *Characters;
+	editor_char *Characters;
 	u32 CharacterCount;
-	u8 *Bytes;
-	u32 ByteCount;
+	u32 CharacterLimit;
 	b32 IsModified;
 } editor_file;
 

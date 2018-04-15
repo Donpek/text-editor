@@ -1,6 +1,6 @@
 #include "str.c"
 #include "drawing_functions.c"
-// COMMIT AFTER FINISHING: Inserting characters.
+// COMMIT AFTER FINISHING: Change the content format to an arraylist.
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
@@ -65,7 +65,7 @@ internal void
 EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
 {
 	EditorFillWholeScreen(Video, ' ', 0);
-	Memory->WriteBits = PIXEL_WHITE_FG;
+	Memory->WriteBits = PIXEL_RED_FG | PIXEL_WHITE_BG;
 	EditorFillWithContent(Video, Memory);
 	Memory->Cursor = (editor_pixel *)Video->Memory;
 	EditorInvertPixel(Memory->Cursor);
@@ -98,18 +98,26 @@ EditorSetToHomeMenu(editor_screen_buffer *Video, editor_memory *Memory)
 	Memory->CurrentMode = EDITOR_HOME_MENU;
 }
 
-internal void
-EditorReadCharactersFromBytes(u32 ByteCount, u8 *Bytes, u32 *Output)
+internal u32
+EditorReadCharactersFromBytes(u32 ByteCount, u8 *Bytes, editor_char *Output)
 {
-	for(u32 CharacterIndex = 0;
-			CharacterIndex < ByteCount;
+	u32 SizeInBytes = Str32GetCharacterSize(Bytes);
+	Output->PrevIndex = 0; Output->NextIndex = 1;
+	Output->Value = Str32ConvertBytesIntoCharacter(SizeInBytes, Bytes);
+	Bytes += SizeInBytes;
+	++Output;
+	u32 CharacterIndex = 1;
+	for(;CharacterIndex < ByteCount;
 			++CharacterIndex)
 	{
-		u32 SizeInBytes = Str32GetCharacterSize(Bytes);
-		*Output = Str32ConvertBytesIntoCharacter(SizeInBytes, Bytes);
+		SizeInBytes = Str32GetCharacterSize(Bytes);
+		Output->PrevIndex = CharacterIndex - 1;
+		Output->NextIndex = CharacterIndex + 1;
+		Output->Value = Str32ConvertBytesIntoCharacter(SizeInBytes, Bytes);
 		Bytes += SizeInBytes;
 		++Output;
 	}
+	return(CharacterIndex);
 }
 
 internal void
@@ -125,27 +133,32 @@ EditorReadCharactersFromPixels(u32 PixelCount, editor_pixel *Pixels, u32 *Output
 }
 
 internal u32
-EditorReadLines(u32 CharacterCount, u32 *Characters, editor_line *Output)
+EditorReadLines(u32 CharacterCount, editor_char *Characters, editor_line *Output)
 {
 	u32 LineCount = 0;
+	u32 CharacterIndex = 0;
 	while(CharacterCount)
 	{
 		editor_line Line = {0};
-		Line.Start = (void *)Characters;
+		Line.Start = (void *)(Characters + CharacterIndex);
 
-		while(*(Characters) != '\n')
+// BOOKMARK (Donatas) Inner loop doesn't terminate.
+		while(Characters[CharacterIndex].Value != (u32)'\n')
 		{
 			++Line.Length;
 			--CharacterCount;
-			++Characters;
+			CharacterIndex = Characters[CharacterIndex].NextIndex;
 		}
 		++Line.Length; // don't forget to add \n
 		--CharacterCount;
-		++Characters;
+		CharacterIndex = Characters[CharacterIndex].NextIndex;
 
 		++LineCount; // next line
 		*Output = Line;
 		++Output;
+		// char Buff[20];
+		// sprintf(Buff, "%d\n", CharacterCount);
+		// PlatformQuit(Buff);
 	}
 	return(LineCount);
 }
@@ -206,7 +219,7 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 	EditorReadCharactersFromPixels(InputtedLine.Length,
 		InputtedLine.Start, InputtedFilename);
 
-	u8 ConvertedFilename[InputtedLine.Length * 4 + 1];
+	u8 ConvertedFilename[InputtedLine.Length * sizeof(u32) + 1];
 	u8 *ConvertedPointer = (u8 *)ConvertedFilename;
 	for(u32 CharacterIndex = 0;
 		CharacterIndex < InputtedLine.Length;
@@ -226,15 +239,12 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 																				ReadOutputLocation);
 	if(BytesRead)
 	{
-		Memory->File.Bytes = ReadOutputLocation;
-		Memory->File.ByteCount = (u32)BytesRead;
-		// TODO (Donatas) Do the conversion to arraylist here.
-		Memory->File.Characters = (u32 *)(ReadOutputLocation + BytesRead);
-		Memory->File.CharacterCount = Str32GetStringLength(Memory->File.Bytes);
-		EditorReadCharactersFromBytes(Memory->File.CharacterCount,
-			(void *)Memory->File.Bytes, Memory->File.Characters);
-		Memory->File.Lines = (editor_line *)(Memory->File.Characters +
-			Memory->File.CharacterCount);
+		Memory->File.Characters = (editor_char *)(ReadOutputLocation + MEGABYTES(1));
+		Memory->File.CharacterCount =
+			EditorReadCharactersFromBytes(BytesRead,
+				ReadOutputLocation, Memory->File.Characters);
+
+		Memory->File.Lines = (editor_line *)(ReadOutputLocation);
 		Memory->File.LineCount = EditorReadLines(Memory->File.CharacterCount,
 			Memory->File.Characters, Memory->File.Lines);
 		EditorSetToEdit(Video, Memory);

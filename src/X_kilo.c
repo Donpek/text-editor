@@ -370,7 +370,7 @@ int main(void)
 
 			x_input XInput = {0};
 			editor_input Input = {0};
-			void *Memory = malloc(MEGABYTES(1) + KILOBYTES(1));
+			void *Memory = malloc(MEGABYTES(2) + KILOBYTES(1));
 			if(Memory)
 			{
 				XEnableRawMode();
