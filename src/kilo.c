@@ -1,7 +1,67 @@
+// COMMIT AFTER FINISHING: Character insertion / generation of new arraylist nodes.
 #include "str.c"
+
+internal editor_line *
+EditorGetLine(editor_memory *Memory, u32 LineNum)
+{
+	editor_file File = Memory->File;
+	editor_line *Line = File.Lines;
+	for(u32 LineIndex = 1;
+			LineIndex < LineNum;
+			++LineIndex)
+	{
+		Line = File.Lines + Line->NextIndex;
+	}
+	return(Line);
+}
+
+internal editor_char *
+EditorGetCharacter(editor_memory *Memory, u32 LineNum, u32 CharNum)
+{
+	editor_file File = Memory->File;
+	editor_char *Char = (editor_char *)EditorGetLine(Memory, LineNum)->Start;
+	for(u32 CharIndex = 1;
+			CharIndex < CharNum;
+			++CharIndex)
+	{
+		Char = File.Characters + Char->NextIndex;
+	}
+	return(Char);
+}
+
+internal u32
+EditorGetCharacterNodeIndex(editor_memory *Memory, u32 LineNum, u32 CharNum)
+{
+	editor_file File = Memory->File;
+	editor_char *Char = (editor_char *)EditorGetLine(Memory, LineNum)->Start;
+	u32 Result = File.Characters[Char->NextIndex].PrevIndex;
+	for(u32 CharIndex = 1;
+			CharIndex < CharNum;
+			++CharIndex)
+	{
+		Result = Char->NextIndex;
+		Char = File.Characters + Char->NextIndex;
+	}
+	return(Result);
+}
+
+internal u32
+EditorGetLineNodeIndex(editor_memory *Memory, u32 LineNum)
+{
+	editor_file File = Memory->File;
+	editor_line *Line = File.Lines;
+	u32 Result = File.Lines[Line->NextIndex].PrevIndex;
+	for(u32 LineIndex = 1;
+			LineIndex < LineNum;
+			++LineIndex)
+	{
+		Result = Line->NextIndex;
+		Line = File.Lines + Line->NextIndex;
+	}
+	return(Result);
+}
+
 #include "drawing_functions.c"
-// COMMIT AFTER FINISHING: rewrite EditorMoveCursor using the char arraylist
-// instead of pixel data.
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
@@ -139,12 +199,33 @@ EditorReadLines(u32 CharacterCount, editor_char *Characters, editor_line *Output
 {
 	u32 LineCount = 0;
 	u32 CharacterIndex = 0;
+	editor_line Line = {0};
+
+	Line.Start = (void *)(Characters + CharacterIndex);
+	Line.PrevIndex = 0;
+	Line.NextIndex = 1;
+
+	while(Characters[CharacterIndex].Value != (u32)'\n')
+	{
+		++Line.Length;
+		--CharacterCount;
+		CharacterIndex = Characters[CharacterIndex].NextIndex;
+	}
+	++Line.Length; // don't forget to add \n
+	--CharacterCount;
+	CharacterIndex = Characters[CharacterIndex].NextIndex;
+
+	++LineCount; // next line
+	*Output = Line;
+	++Output;
+
 	while(CharacterCount)
 	{
-		editor_line Line = {0};
 		Line.Start = (void *)(Characters + CharacterIndex);
+		Line.PrevIndex = LineCount - 1;
+		Line.NextIndex = LineCount + 1;
+		Line.Length = 0; Line.Label = 0;
 
-// BOOKMARK (Donatas) Inner loop doesn't terminate.
 		while(Characters[CharacterIndex].Value != (u32)'\n')
 		{
 			++Line.Length;
@@ -158,9 +239,6 @@ EditorReadLines(u32 CharacterCount, editor_char *Characters, editor_line *Output
 		++LineCount; // next line
 		*Output = Line;
 		++Output;
-		// char Buff[20];
-		// sprintf(Buff, "%d\n", CharacterCount);
-		// PlatformQuit(Buff);
 	}
 	return(LineCount);
 }
@@ -271,7 +349,6 @@ EditorTryToGetPixelFromFile(editor_memory *Memory, editor_screen_buffer *Video)
 		Result += (File.CurrLineIndex - Memory->RenderOffset) * Video->Width +
 							File.CurrCharIndex;
 	}
-
 	return(Result);
 }
 
@@ -282,6 +359,9 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 	editor_file File = Memory->File;
 	EditorInvertPixel(Memory->Cursor);
 	b32 NeedToScroll = 0; u32 ScrollDirection = 0;
+	editor_line *CurrLine = EditorGetLine(Memory, File.CurrLineIndex + 1);
+	editor_line *PrevLine = File.Lines + CurrLine->PrevIndex;
+	editor_line *NextLine = File.Lines + CurrLine->NextIndex;
 	switch(MoveDirection)
 	{
 		case EDITOR_MOVE_UP: {
@@ -292,10 +372,9 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 				{
 					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_UP;
 				}
-				if(File.Lines[File.CurrLineIndex].Length <
-					File.CurrCharIndex + 1)
+				if(PrevLine->Length <	File.CurrCharIndex + 1)
 				{
-					File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
+					File.CurrCharIndex = PrevLine->Length - 1;
 				}
 			}
 		} break;
@@ -304,14 +383,13 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 			{
 				++File.CurrLineIndex;
 				if(File.CurrLineIndex >= File.LineCount ||
-					File.CurrLineIndex >= Video->Height + Memory->RenderOffset)
+					 File.CurrLineIndex >= Video->Height + Memory->RenderOffset)
 				{
 					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_DOWN;
 				}
-				if(File.Lines[File.CurrLineIndex].Length <
-					File.CurrCharIndex + 1)
+				if(NextLine->Length < File.CurrCharIndex + 1)
 				{
-					File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
+					File.CurrCharIndex = NextLine->Length - 1;
 				}
 			}
 		} break;
@@ -322,7 +400,7 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 			}else if(File.CurrLineIndex + Memory->RenderOffset > 0)
 			{
 				--File.CurrLineIndex;
-				File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
+				File.CurrCharIndex = PrevLine->Length - 1;
 				if(File.CurrLineIndex - Memory->RenderOffset + 1 == 0)
 				{
 					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_UP;
@@ -330,7 +408,7 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 			}
 		} break;
 		case EDITOR_MOVE_RIGHT: {
-			if(File.CurrCharIndex < File.Lines[File.CurrLineIndex].Length - 1)
+			if(File.CurrCharIndex < CurrLine->Length - 1)
 			{
 				++File.CurrCharIndex;
 			}else	if(File.CurrLineIndex < File.LineCount - 1 &&
@@ -353,21 +431,89 @@ EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 	Memory->Cursor = EditorTryToGetPixelFromFile(Memory, Video);
 	if(!Memory->Cursor)
 	{
+		// FIXME (Donatas) Going below the last line triggers this.
 		FORMAT("cursor out of bounds. Ln%d Ch%d",
-					 File.CurrLineIndex, File.CurrCharIndex)
+					 (int)File.CurrLineIndex, (int)File.CurrCharIndex)
 	}
 	EditorInvertPixel(Memory->Cursor);
-	// NOTE (Donatas) Doing it this way means I'll need to reset the Line.Start's
-	// as well as Line.Length's when inserting characters.
-	// editor_char *CurrChar = (editor_char *)File.Lines[File.CurrLineIndex].Start;
-	// TODO (Donatas) Put this in a EditorGetCharacter function.
-	// for(u32 CharIndex = 0;
-	// 		CharIndex <= File.CurrCharIndex;
-	// 		++CharIndex)
-	// {
-	// 	CurrChar = File.Characters + CurrChar->NextIndex;
-	// }
-	// Memory->File.Cursor = CurrChar;
+}
+
+internal b32
+EditorInsertCharacter(editor_memory *Memory, editor_screen_buffer *Video,
+											editor_input Input)
+{
+	if(Input.Character == '\r')
+	{
+		Input.Character = '\n';
+	}
+	b32 NeedToClearScreen = 0;
+	editor_file *File = &Memory->File;
+	editor_char NewCharacter = {0};
+	NewCharacter.Value = Input.Character;
+	u32 NodeIndex = EditorGetCharacterNodeIndex(Memory, File->CurrLineIndex + 1,
+																							File->CurrCharIndex + 1);
+	u32 PrevIndexOfCurrNode = File->Characters[NodeIndex].PrevIndex;
+
+	u32 LineIndex = EditorGetLineNodeIndex(Memory, File->CurrLineIndex + 1);
+	if(!File->CurrCharIndex)
+	{
+		File->Lines[LineIndex].Start = (void *)(File->Characters + File->CharacterCount);
+	}
+
+	if(!File->CurrLineIndex && !File->CurrCharIndex)
+	{
+		NewCharacter.PrevIndex = File->CharacterCount;
+		NewCharacter.NextIndex = File->FirstCharIndex;
+
+		File->Characters[File->FirstCharIndex].PrevIndex = File->CharacterCount;
+		File->FirstCharIndex = File->CharacterCount;
+	}else
+	{
+		NewCharacter.PrevIndex = PrevIndexOfCurrNode;
+		NewCharacter.NextIndex = NodeIndex;
+
+		File->Characters[PrevIndexOfCurrNode].NextIndex = File->CharacterCount;
+		File->Characters[NodeIndex].PrevIndex = File->CharacterCount;
+	}
+
+	// TODO (Donatas) Reuse zombie characters.
+	++File->Lines[LineIndex].Length;
+	if((File->Lines[LineIndex].Length - 1) % Video->Width == 0)
+	{
+		NeedToClearScreen = 1;
+	}
+	++File->CurrCharIndex;
+	File->Characters[File->CharacterCount] = NewCharacter;
+
+	// XXX
+	if(Input.Character == '\n')
+	{
+		NeedToClearScreen = 1;
+		// FIXME (Donatas) Pressing enter at the last newline in the file bugs it out.
+		// TODO (Donatas) Start tracking the virtual line count (overflowing lines + normal lines)
+		//  and make it so they count as actual lines when moving the cursor up/down.
+		editor_line NewLine = {0};
+		NewLine.Length =
+			File->Lines[LineIndex].Length - File->CurrCharIndex;
+		NewLine.Start = (void *)(File->Characters + NodeIndex);
+		NewLine.PrevIndex = LineIndex;
+		u32 NextIndexOfCurrLine = File->Lines[LineIndex].NextIndex;
+		NewLine.NextIndex = NextIndexOfCurrLine;
+
+		File->Lines[LineIndex].NextIndex = File->LineCount;
+		File->Lines[NextIndexOfCurrLine].PrevIndex = File->LineCount;
+
+		File->Lines[LineIndex].Length = File->CurrCharIndex;
+
+		// TODO (Donatas) Reuse zombie lines.
+		++File->CurrLineIndex;
+		File->Lines[File->LineCount] = NewLine;
+		++File->LineCount;
+		File->CurrCharIndex = 0;
+	}
+	++File->CharacterCount;
+	File->IsModified = 1;
+	return(NeedToClearScreen);
 }
 
 internal void
@@ -450,7 +596,8 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 			} break;
 			case EDITOR_EDITING:
 			{
-				if(Str32IsControlCharacter(Input.Character))
+				if(Input.Character != '\r' && Input.Character != '\n' &&
+					 Str32IsControlCharacter(Input.Character))
 				{
 					// STUDY(gunce): whether this logic is platform-dependent.
 					if((Input.Character & 0xFF) == ESCAPE_CHARACTER)
@@ -482,9 +629,18 @@ EditorUpdateScreen(editor_screen_buffer *Video, editor_input Input,
 						}
 					}
 					// TODO(gunce): key combination features.
+					// TODO (Donatas) Deleting characters.
 				}else
 				{
 					// TODO(gunce): text input logic.
+					b32 NeedToClearScreen = EditorInsertCharacter(Memory, Video, Input);
+					if(NeedToClearScreen)
+					{
+						EditorFillWholeScreen(Video, ' ', Memory->WriteBits);
+					}
+					EditorFillWithContent(Video, Memory);
+					Memory->Cursor = EditorTryToGetPixelFromFile(Memory, Video);
+					EditorInvertPixel(Memory->Cursor);
 				}
 			} break;
 			case EDITOR_MESSAGE_BOX:

@@ -61,6 +61,7 @@ typedef struct
 
 typedef struct
 {
+	u32 PrevIndex, NextIndex;
 	void *Start;
 	u32 Length;
 	u32 Label;
@@ -78,6 +79,7 @@ typedef struct
 	u32 CurrLineIndex;
 	u32 LineCount;
 	editor_char *Characters;
+	u32 FirstCharIndex;
 	u32 CurrCharIndex;
 	u32 CharacterCount;
 	b32 IsModified;

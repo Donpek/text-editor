@@ -201,27 +201,30 @@ internal void
 EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 {
 	editor_pixel *Cursor = (editor_pixel *)Buffer->Memory;
-	editor_line Line = *(Memory->File.Lines + Memory->RenderOffset);
+	editor_line *Line = EditorGetLine(Memory, Memory->RenderOffset + 1);
+	u32 LineLength = Line->Length;
 	u32 LineIndex = Memory->RenderOffset;
-	editor_char *Character = (editor_char *)(Line.Start);
+	u32 LineCount = Memory->File.LineCount;
+	editor_char *Character = (editor_char *)(Line->Start);
 	u32 RowsAvailable = Buffer->Height;
-	while(RowsAvailable)
+	while(RowsAvailable && LineCount)
 	{
-		if(Buffer->Width >= Line.Length)
+		if(Buffer->Width >= LineLength)
 		{
 			for(u32 ColumnIndex = 0;
-				ColumnIndex < Line.Length;
+				ColumnIndex < LineLength;
 				++ColumnIndex)
 			{
 				EditorWritePixel(Cursor, Character->Value, Memory->WriteBits, 0);
 				++Cursor;
-				++Character;
+				Character = Memory->File.Characters + Character->NextIndex;
 			}
-			Cursor += Buffer->Width - Line.Length;
-			++LineIndex;
+			Cursor += Buffer->Width - LineLength;
+			LineIndex = Line->NextIndex;
 			if(LineIndex != Memory->File.LineCount)
 			{
-				Line = *(Memory->File.Lines + LineIndex);
+				Line = Memory->File.Lines + LineIndex;
+				LineLength = Line->Length;
 			}else // screen can hold more lines than the file has to give.
 			{
 				return;
@@ -234,11 +237,12 @@ EditorFillWithContent(editor_screen_buffer *Buffer, editor_memory *Memory)
 			{
 				EditorWritePixel(Cursor, Character->Value, Memory->WriteBits, 0);
 				++Cursor;
-				++Character;
+				Character = Memory->File.Characters + Character->NextIndex;
 			}
-			Line.Length -= Buffer->Width;
+			LineLength -= Buffer->Width;
 		}
 		--RowsAvailable;
+		--LineCount;
 	}
 }
 
