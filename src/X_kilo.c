@@ -21,6 +21,8 @@
 #include "../kilo.h"
 #include "bitmanip.c"
 
+#define FORMAT(format, ...) {char B[1000]; sprintf(B, format); PlatformQuit(B);}
+
 // NOTE(gunce): pixel info bits.
 #define PIXEL_NEED_TO_DRAW 1
 #define PIXEL_RED_FG 2

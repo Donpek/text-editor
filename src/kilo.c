@@ -1,6 +1,7 @@
 #include "str.c"
 #include "drawing_functions.c"
-// COMMIT AFTER FINISHING: Change the content format to an arraylist.
+// COMMIT AFTER FINISHING: rewrite EditorMoveCursor using the char arraylist
+// instead of pixel data.
 
 internal void
 EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
@@ -15,13 +16,14 @@ EditorScroll(editor_screen_buffer *Buffer, editor_memory *Memory,
 		Memory->RenderOffset -= 1;
 	}else
 	{
-		if(Memory->File.LineCount < Memory->RenderOffset + Buffer->CursorY)
+		// TODO (Donatas) Check for end of file, too.
+		if(Memory->File.CurrLineIndex + 1 == Memory->File.LineCount)
 		{
 			return;
 		}
 		Memory->RenderOffset += 1;
 	}
-	EditorFillWholeScreen(Buffer, ' ', 0);
+	EditorFillWholeScreen(Buffer, ' ', Memory->WriteBits);
 	EditorFillWithContent(Buffer, Memory);
 }
 
@@ -64,8 +66,8 @@ EditorSetToMessageBox(editor_screen_buffer *Buffer, editor_memory *Memory,
 internal void
 EditorSetToEdit(editor_screen_buffer *Video, editor_memory *Memory)
 {
-	EditorFillWholeScreen(Video, ' ', 0);
-	Memory->WriteBits = PIXEL_RED_FG | PIXEL_WHITE_BG;
+	Memory->WriteBits = PIXEL_WHITE_BG;
+	EditorFillWholeScreen(Video, ' ', Memory->WriteBits);
 	EditorFillWithContent(Video, Memory);
 	Memory->Cursor = (editor_pixel *)Video->Memory;
 	EditorInvertPixel(Memory->Cursor);
@@ -247,6 +249,7 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 		Memory->File.Lines = (editor_line *)(ReadOutputLocation);
 		Memory->File.LineCount = EditorReadLines(Memory->File.CharacterCount,
 			Memory->File.Characters, Memory->File.Lines);
+
 		EditorSetToEdit(Video, Memory);
 	}else
 	{
@@ -255,111 +258,116 @@ EditorTryOpeningAnExistingFile(editor_memory *Memory, editor_screen_buffer *Vide
 	}
 }
 
+internal editor_pixel *
+EditorTryToGetPixelFromFile(editor_memory *Memory, editor_screen_buffer *Video)
+{
+	editor_pixel *Result = 0;
+	editor_file File = Memory->File;
+
+	if(File.CurrLineIndex >= Memory->RenderOffset && File.CurrLineIndex <
+		 Memory->RenderOffset + Video->Height)
+	{
+		Result = (editor_pixel *)Video->Memory;
+		Result += (File.CurrLineIndex - Memory->RenderOffset) * Video->Width +
+							File.CurrCharIndex;
+	}
+
+	return(Result);
+}
+
 internal void
 EditorMoveCursor(editor_memory *Memory, editor_screen_buffer *Video,
 								 i32 MoveDirection)
 {
-	u32 X = Video->CursorX; u32 Width = Video->Width;
-	u32 Y = Video->CursorY; u32 Height = Video->Height;
-	editor_pixel *Cursor = Memory->Cursor;
-	EditorInvertPixel(Cursor);
+	editor_file File = Memory->File;
+	EditorInvertPixel(Memory->Cursor);
+	b32 NeedToScroll = 0; u32 ScrollDirection = 0;
 	switch(MoveDirection)
 	{
 		case EDITOR_MOVE_UP: {
-			if(Y > 0)
+			if(File.CurrLineIndex > 0)
 			{
-				--(Y);
-				Cursor = Cursor - Width;
-			}else
-			{
-				EditorScroll(Video, Memory, EDITOR_SCROLL_UP);
-			}
-			if(((Cursor)->Character) == (u32)' ')
-			{
-				u32 SavedX = X;
-				Cursor = Cursor - (X) + Width - 1;
-				X = Width - 1;
-				do
+				--File.CurrLineIndex;
+				if(File.CurrLineIndex - Memory->RenderOffset + 1 == 0)
 				{
-					--(X);
-					--(Cursor);
-				}while(((Cursor)->Character) == (u32)' ' && X);
-				if(X > SavedX)
+					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_UP;
+				}
+				if(File.Lines[File.CurrLineIndex].Length <
+					File.CurrCharIndex + 1)
 				{
-					Cursor = (Cursor) + SavedX - (X);
-					X = SavedX;
+					File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
 				}
 			}
 		} break;
 		case EDITOR_MOVE_DOWN: {
-			if(Y < Height - 1)
+			if(File.CurrLineIndex < File.LineCount - 1)
 			{
-				++(Y);
-				Cursor = Cursor + Width;
-			}else
-			{
-				EditorScroll(Video, Memory, EDITOR_SCROLL_DOWN);
-			}
-			if(((Cursor)->Character) == (u32)' ')
-			{
-				u32 SavedX = X;
-				Cursor = Cursor - (X) + Width - 1;
-				X = Width - 1;
-				do
+				++File.CurrLineIndex;
+				if(File.CurrLineIndex >= File.LineCount ||
+					File.CurrLineIndex >= Video->Height + Memory->RenderOffset)
 				{
-					--(X);
-					--(Cursor);
-				}while(((Cursor)->Character) == (u32)' ' && X);
-				if(X > SavedX)
+					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_DOWN;
+				}
+				if(File.Lines[File.CurrLineIndex].Length <
+					File.CurrCharIndex + 1)
 				{
-					Cursor = (Cursor) + SavedX - (X);
-					X = SavedX;
+					File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
 				}
 			}
 		} break;
 		case EDITOR_MOVE_LEFT: {
-			if(X > 0)
+			if(File.CurrCharIndex > 0)
 			{
-				--(X);
-				--(Cursor);
-			}else if(Y)
+				--File.CurrCharIndex;
+			}else if(File.CurrLineIndex + Memory->RenderOffset > 0)
 			{
-				--(Y);
-				Cursor = Cursor - 1;
-				X = Width - 1;
-				if((Cursor)->Character == (u32)' ')
+				--File.CurrLineIndex;
+				File.CurrCharIndex = File.Lines[File.CurrLineIndex].Length - 1;
+				if(File.CurrLineIndex - Memory->RenderOffset + 1 == 0)
 				{
-					do
-					{
-						--(X);
-						--(Cursor);
-					}while((Cursor)->Character == (u32)' ' && X);
+					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_UP;
 				}
 			}
 		} break;
 		case EDITOR_MOVE_RIGHT: {
-			u32 LineEndX = Width - 1;
-			editor_pixel *LineEnd =	(editor_pixel *)Video->Memory + LineEndX + Y * Width;
-			do
+			if(File.CurrCharIndex < File.Lines[File.CurrLineIndex].Length - 1)
 			{
-				--LineEnd;
-				--LineEndX;
-			}while(LineEnd->Character == (u32)' ' && LineEndX);
-			if(X < LineEndX)
+				++File.CurrCharIndex;
+			}else	if(File.CurrLineIndex < File.LineCount - 1 &&
+ 					 		 File.CurrLineIndex < Video->Height + Memory->RenderOffset)
 			{
-				++(X);
-				++(Cursor);
-			}else
-			{
-				++(Y);
-				Cursor = Cursor + Width - X;
-				X = 0;
+				++File.CurrLineIndex;
+				File.CurrCharIndex = 0;
+				if(File.CurrLineIndex == Video->Height + Memory->RenderOffset)
+				{
+					NeedToScroll = 1; ScrollDirection = EDITOR_SCROLL_DOWN;
+				}
 			}
 		} break;
 	}
-	EditorInvertPixel(Cursor);
-	Memory->Cursor = Cursor;
-	Video->CursorX = X; Video->CursorY = Y;
+	Memory->File = File;
+	if(NeedToScroll)
+	{
+		EditorScroll(Video, Memory, ScrollDirection);
+	}
+	Memory->Cursor = EditorTryToGetPixelFromFile(Memory, Video);
+	if(!Memory->Cursor)
+	{
+		FORMAT("cursor out of bounds. Ln%d Ch%d",
+					 File.CurrLineIndex, File.CurrCharIndex)
+	}
+	EditorInvertPixel(Memory->Cursor);
+	// NOTE (Donatas) Doing it this way means I'll need to reset the Line.Start's
+	// as well as Line.Length's when inserting characters.
+	// editor_char *CurrChar = (editor_char *)File.Lines[File.CurrLineIndex].Start;
+	// TODO (Donatas) Put this in a EditorGetCharacter function.
+	// for(u32 CharIndex = 0;
+	// 		CharIndex <= File.CurrCharIndex;
+	// 		++CharIndex)
+	// {
+	// 	CurrChar = File.Characters + CurrChar->NextIndex;
+	// }
+	// Memory->File.Cursor = CurrChar;
 }
 
 internal void

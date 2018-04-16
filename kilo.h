@@ -45,7 +45,6 @@ typedef struct
 {
 	void *Memory;
 	u32 Width, Height;
-	u32 CursorX, CursorY;
 } editor_screen_buffer;
 
 typedef struct
@@ -76,10 +75,11 @@ typedef struct
 typedef struct
 {
 	editor_line *Lines;
+	u32 CurrLineIndex;
 	u32 LineCount;
 	editor_char *Characters;
+	u32 CurrCharIndex;
 	u32 CharacterCount;
-	u32 CharacterLimit;
 	b32 IsModified;
 } editor_file;
 
